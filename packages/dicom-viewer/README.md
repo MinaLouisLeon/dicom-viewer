@@ -2,7 +2,7 @@
 
 React DICOM viewer for files the user selects on their own device. Built on [Cornerstone3D](https://www.cornerstonejs.org/).
 
-> **Status: pre-release (P03 under review).** File selection, study and series listing, 2D viewing (pan, zoom, window and level, slice navigation) and the 3D layout (linked axial, sagittal and coronal cross-sections and a rotatable volume) work with synthetic fixtures. Compatibility testing with real studies, large-study benchmarks and the release candidate are P04. Not published to npm.
+> **Status: pre-release.** 2D and 3D viewing have been exercised with synthetic fixtures. P04 covers packed-consumer compatibility, real-study testing and large-study benchmarks. Install the development tarball to evaluate the package.
 
 ## Privacy model
 
@@ -14,6 +14,19 @@ React DICOM viewer for files the user selects on their own device. Built on [Cor
 
 ## Install (Vite + React)
 
+From the repository root, build and pack the viewer:
+
+```sh
+npm run build:package
+npm pack --workspace @mivo-labs/dicom-viewer
+```
+
+In your React + Vite consumer, install the generated tarball:
+
+```sh
+npm install /path/to/mivo-labs-dicom-viewer-0.0.0.tgz
+```
+
 ```ts
 // vite.config.ts
 import { mivoDicomViewer } from '@mivo-labs/dicom-viewer/vite';
@@ -24,16 +37,26 @@ export default defineConfig({ plugins: [react(), mivoDicomViewer()] });
 ```
 
 ```tsx
+import { useRef } from 'react';
 import '@mivo-labs/dicom-viewer/styles.css';
-import { DicomViewer, type DicomViewerHandle } from '@mivo-labs/dicom-viewer';
+import { DEFAULT_CODEC_BASE_PATH, DicomViewer, type DicomViewerHandle } from '@mivo-labs/dicom-viewer';
 
-export function ImagingPage() {
+export function ImagingPage({ logout }: { logout: () => void }) {
   const viewer = useRef<DicomViewerHandle>(null);
-  // e.g. on logout: viewer.current?.clear();
+  const handleLogout = () => {
+    viewer.current?.clear();
+    logout();
+  };
   return (
-    <div style={{ height: 600 }}>
-      <DicomViewer ref={viewer} onError={(error) => console.warn(error.code)} />
-    </div>
+    <>
+      <button onClick={handleLogout}>Sign out</button>
+      <div style={{ height: 600 }}>
+        <DicomViewer
+          ref={viewer}
+          codecBasePath={import.meta.env.BASE_URL + DEFAULT_CODEC_BASE_PATH.slice(1)}
+        />
+      </div>
+    </>
   );
 }
 ```
@@ -130,7 +153,7 @@ Every selector is scoped under `.mivo-dv`. To theme the viewer, override the `--
 - Not yet verified: real CBCT exports and compressed volumes. The 3D view uses Cornerstone's `CT-Bone` preset, which assumes Hounsfield units; uncalibrated CBCT grey values may need another mapping.
 - Not supported: Deflated Explicit VR Little Endian, files without pixel data (DICOMDIR, SR), and files without Study or Series Instance UIDs. These are listed as skipped files with a reason.
 
-The full compatibility matrix is defined in P00-02 and verified in P04.
+The approved Windows browser and device matrix and real-study validation are pending. The 1 GB input target and the 2 GiB decoded-volume setting are separate quantities. Peak memory also includes source data, decoded images and graphics resources, so the decoded-volume setting does not establish a supported study size.
 
 ## Development
 
@@ -143,3 +166,5 @@ npm run dev              # build the package and start the demo (http://localhos
 npm run check            # typecheck + unit tests + build package and demo
 npm run smoke:consumer   # pack tarball → install in a clean Vite app → build → check assets
 ```
+
+For a browser exercise, run `npm run smoke:consumer -- --keep`, enter the generated `app` folder, and run `npx vite preview`. Open `/dicom-consumer/`. Select a synthetic fixture from `fixtures/synthetic` in the repository and confirm that it displays. Use `codecs` to exercise JPEG 2000 and JPEG-LS in 2D, and select the files in `cbct` or `cbct-multiframe` and click **Host 3D** to exercise linked cross-sections and volume rendering. Use **Host cancel** during a load and **Host reset** after display. Reset should return the viewer to `idle` and remove the study and images. Capture the browser network, console and application storage during the exercise to verify local-data handling on the test device.

@@ -32,6 +32,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Apply Vite's CommonJS interop to the loader's dicom-parser import in tests.
+    server: { deps: { inline: ['@cornerstonejs/dicom-image-loader'] } },
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.test.{ts,tsx}'],

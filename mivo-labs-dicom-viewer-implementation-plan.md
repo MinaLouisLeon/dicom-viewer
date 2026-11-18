@@ -41,7 +41,7 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 | P01 · Package foundation and demo | P00 (plan approval) | Ready for review | Branch `feat/p01-package-foundation`; see progress log 2026-11-18 |
 | P02 · 2D viewer | P01 | Ready for review | Branch `feat/2d-viewer`; see progress log 2026-11-18 |
 | P03 · 3D CBCT viewer | P02 | Ready for review — P03-01 to P03-03 done; P03-04 orientation and ordering verified, comparison with acceptance limits waits on P00-02 | Branch `feat/3D-CBCT-viewer-q`; see progress log 2026-11-18 |
-| P04 · Compatibility and release candidate | P03 | Not started | — |
+| P04 · Compatibility and release candidate | P03 | In progress | Branch `feat/p04-compatibility-release-candidate`; synthetic packed-consumer and lifecycle evidence below |
 | P05 · npm publication and SaaS handoff | P04 | Not started | — |
 
 ### P00 · Plan and compatibility baseline
@@ -82,6 +82,10 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 - [ ] P04-02 Verify cancellation, host-requested reset on logout, resource disposal, and absence of persistent clinical data or sensitive logging.
 - [ ] P04-04 Benchmark representative inputs up to 1 GB, including both a large file and multi-file series. Capture resource use, cancellation responsiveness, repeated open/close behavior, and network evidence. Record supported limits and resolve release-blocking crashes.
 - [ ] P04-03 Write quick start, API and compatibility documentation, sample integrations, known limitations, and a changelog. Inspect the tarball for credentials and patient data.
+
+**2026-11-18 initial evidence.** A clean React + Vite production build installed the npm tarball and passed declaration, CSS, decode worker, WASM and lazy-chunk checks under `/dicom-consumer/`. Headless Chrome 157 on Windows with SwiftShader displayed the synthetic JPEG 2000 and JPEG-LS images and both the classic and enhanced CBCT fixtures. Host reset returned to idle and hid the images after each display. Cancelling a deliberately delayed header scan returned to idle. Observed requests were local GETs, with no console errors. Local storage contained only Cornerstone GPU capability and log-level keys. Session storage, IndexedDB, Cache Storage and service worker registrations were empty.
+
+The package quick start, logout integration, compatibility notes and changelog are drafted. The smoke test checked all tarball paths against the expected package layout. The release content review remains open. A regression test with Cornerstone's real dataset cache confirms that a 3D dataset read finishing after release no longer leaves a cached dataset. Pending 2D decodes, the approved Windows matrix, real CBCT fixtures and the 1 GB benchmark remain open.
 
 **Acceptance:** The complete packaged UI and both modes pass the approved Windows test matrix from the tarball. The documented large-study benchmark and local-only network checks pass. Document the results and resolve release-blocking issues.
 
