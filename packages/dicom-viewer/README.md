@@ -1,4 +1,4 @@
-# @mivo-labs/dicom-viewer
+# @mihawksolutions/dicom-viewer
 
 React DICOM viewer for files the user selects on their own device. Built on [Cornerstone3D](https://www.cornerstonejs.org/).
 
@@ -18,18 +18,18 @@ From the repository root, build and pack the viewer:
 
 ```sh
 npm run build:package
-npm pack --workspace @mivo-labs/dicom-viewer
+npm pack --workspace @mihawksolutions/dicom-viewer
 ```
 
 In your React + Vite consumer, install the generated tarball:
 
 ```sh
-npm install /path/to/mivo-labs-dicom-viewer-0.0.0.tgz
+npm install /path/to/mihawksolutions-dicom-viewer-0.0.0.tgz
 ```
 
 ```ts
 // vite.config.ts
-import { mivoDicomViewer } from '@mivo-labs/dicom-viewer/vite';
+import { mivoDicomViewer } from '@mihawksolutions/dicom-viewer/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
@@ -38,8 +38,8 @@ export default defineConfig({ plugins: [react(), mivoDicomViewer()] });
 
 ```tsx
 import { useRef } from 'react';
-import '@mivo-labs/dicom-viewer/styles.css';
-import { DEFAULT_CODEC_BASE_PATH, DicomViewer, type DicomViewerHandle } from '@mivo-labs/dicom-viewer';
+import '@mihawksolutions/dicom-viewer/styles.css';
+import { DEFAULT_CODEC_BASE_PATH, DicomViewer, type DicomViewerHandle } from '@mihawksolutions/dicom-viewer';
 
 export function ImagingPage({ logout }: { logout: () => void }) {
   const viewer = useRef<DicomViewerHandle>(null);

@@ -2,7 +2,7 @@
 /**
  * Clean-consumer smoke test.
  *
- * Packs @mivo-labs/dicom-viewer into a tarball, installs it into a fresh React + Vite
+ * Packs @mihawksolutions/dicom-viewer into a tarball, installs it into a fresh React + Vite
  * project outside this workspace, type-checks and builds that project, and checks
  * the production output for the worker and codec assets the viewer needs.
  *
@@ -64,7 +64,7 @@ try {
     private: true,
     type: 'module',
     scripts: { build: 'tsc --noEmit && vite build' },
-    dependencies: { '@mivo-labs/dicom-viewer': `file:${tarball.replaceAll('\\', '/')}`, react: v.react, 'react-dom': v.reactDom },
+    dependencies: { '@mihawksolutions/dicom-viewer': `file:${tarball.replaceAll('\\', '/')}`, react: v.react, 'react-dom': v.reactDom },
     devDependencies: { vite: v.vite, '@vitejs/plugin-react': v.pluginReact, typescript: v.typescript, '@types/react': v.typesReact, '@types/react-dom': v.typesReactDom, '@types/node': v.typesNode },
   }, null, 2));
   writeFileSync(path.join(app, 'tsconfig.json'), JSON.stringify({
@@ -73,7 +73,7 @@ try {
     include: ['src', 'vite.config.ts'],
   }, null, 2));
   writeFileSync(path.join(app, 'vite.config.ts'), [
-    "import { mivoDicomViewer } from '@mivo-labs/dicom-viewer/vite';",
+    "import { mivoDicomViewer } from '@mihawksolutions/dicom-viewer/vite';",
     "import react from '@vitejs/plugin-react';",
     "import { defineConfig } from 'vite';",
     '',
@@ -82,8 +82,8 @@ try {
   ].join('\n'));
   writeFileSync(path.join(app, 'index.html'), '<!doctype html><html lang="en"><head><meta charset="UTF-8" /><link rel="icon" href="data:," /><title>consumer</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>\n');
   writeFileSync(path.join(app, 'src', 'main.tsx'), [
-    "import '@mivo-labs/dicom-viewer/styles.css';",
-    "import { DEFAULT_CODEC_BASE_PATH, DicomViewer, type DicomViewerHandle, type ViewerLayout, type ViewerState } from '@mivo-labs/dicom-viewer';",
+    "import '@mihawksolutions/dicom-viewer/styles.css';",
+    "import { DEFAULT_CODEC_BASE_PATH, DicomViewer, type DicomViewerHandle, type ViewerLayout, type ViewerState } from '@mihawksolutions/dicom-viewer';",
     "import { useRef, useState } from 'react';",
     "import { createRoot } from 'react-dom/client';",
     '',

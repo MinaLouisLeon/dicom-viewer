@@ -1,4 +1,4 @@
-// Extracted to dist/styles.css by the library build; consumers import '@mivo-labs/dicom-viewer/styles.css'.
+// Extracted to dist/styles.css by the library build; consumers import '@mihawksolutions/dicom-viewer/styles.css'.
 import './styles/viewer.css';
 
 export { DicomViewer } from './components/DicomViewer';

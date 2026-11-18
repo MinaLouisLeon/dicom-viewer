@@ -1,4 +1,4 @@
-# @mivo-labs/dicom-viewer workspace
+# @mihawksolutions/dicom-viewer workspace
 
 - `packages/dicom-viewer`: the npm package. See its [README](packages/dicom-viewer/README.md).
 - `apps/demo`: standalone React + Vite demo that uses the package's public API.
