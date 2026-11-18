@@ -51,7 +51,7 @@ try {
 
   const files = packInfo.files.map((file) => file.path);
   check('tarball contains dist/index.js, dist/vite.js, dist/styles.css and declarations', ['dist/index.js', 'dist/vite.js', 'dist/styles.css', 'dist/types/index.d.ts', 'dist/types/vite/index.d.ts'].every((f) => files.includes(f)));
-  const expectedFiles = /^(?:package\.json|README\.md|CHANGELOG\.md|dist\/(?:styles\.css|(?:index|vite|chunks\/[\w-]+)\.js(?:\.map)?|types\/(?:[\w-]+\/)*[\w-]+\.d\.ts))$/;
+  const expectedFiles = /^(?:package\.json|README\.md|CHANGELOG\.md|dist\/(?:styles\.css|(?:index|vite|chunks\/[\w-]+)\.js|types\/(?:[\w-]+\/)*[\w-]+\.d\.ts))$/;
   const unexpectedFiles = files.filter((file) => !expectedFiles.test(file));
   check('tarball contains only expected package and build files', unexpectedFiles.length === 0);
   if (unexpectedFiles.length) console.error(`Unexpected package file count: ${unexpectedFiles.length}`);

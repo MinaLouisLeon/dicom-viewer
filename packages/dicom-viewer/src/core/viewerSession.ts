@@ -217,7 +217,8 @@ export class ViewerSession {
   }
 
   private fail(error: unknown, fallback: DicomViewerError['code']): void {
-    const viewerError = error instanceof DicomViewerError ? error : new DicomViewerError(fallback, { cause: error });
+    // Decoder failures may carry parsed datasets in their cause. Expose only the code.
+    const viewerError = new DicomViewerError(error instanceof DicomViewerError ? error.code : fallback);
     this.clearViewportStatus();
     this.setState({ phase: 'error', progress: undefined, error: viewerError });
     this.events().onError?.(viewerError);

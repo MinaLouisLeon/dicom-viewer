@@ -8,7 +8,7 @@ import {
   ZoomTool,
 } from '@cornerstonejs/tools';
 
-import { FileRegistry, classifyLoadError, ensureInitialized, releaseImages } from './cornerstoneSetup';
+import { FileRegistry, classifyLoadError, ensureInitialized } from './cornerstoneSetup';
 import { DicomViewerError, abortError, throwIfAborted } from './errors';
 import type {
   RendererCallbacks,
@@ -159,11 +159,10 @@ export async function createCornerstoneStackRenderer(
     if (destroyed) return;
     const hadStack = shown;
     shown = false;
-    releaseImages(displayedImageIds);
+    const previousImageIds = displayedImageIds;
     displayedImageIds = [];
     imageIndexById = new Map();
     failedIndices.clear();
-    files.release();
     try {
       // Detach the previous stack so the canvas no longer shows released pixels.
       engine?.disableElement(viewportId);
@@ -172,6 +171,7 @@ export async function createCornerstoneStackRenderer(
     } catch {
       // Element already detached.
     }
+    files.release(previousImageIds);
     if (hadStack) callbacks.onViewportChange?.(undefined);
   };
 
@@ -221,9 +221,11 @@ export async function createCornerstoneStackRenderer(
       imageIndexById = new Map(imageIds.map((imageId, index) => [imageId, index]));
       if (imageIds.length === 0) throw new DicomViewerError('NO_DICOM_FILES');
 
+      let onAbort!: () => void;
       const aborted = new Promise<never>((_, reject) => {
-        if (signal.aborted) reject(abortError());
-        signal.addEventListener('abort', () => reject(abortError()), { once: true });
+        onAbort = () => reject(abortError());
+        if (signal.aborted) onAbort();
+        else signal.addEventListener('abort', onAbort, { once: true });
       });
       aborted.catch(() => undefined);
 
@@ -242,6 +244,7 @@ export async function createCornerstoneStackRenderer(
         throwIfAborted(signal);
         throw classifyLoadError(error);
       } finally {
+        signal.removeEventListener('abort', onAbort);
         firstFrame.dispose();
       }
       throwIfAborted(signal);

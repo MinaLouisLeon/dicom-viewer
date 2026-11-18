@@ -138,8 +138,21 @@ export class FileRegistry {
    * key belongs to this registry alone (`fileManager.add` issues a fresh index per
    * registration), so the dataset is unloaded until it is gone.
    */
-  release(): void {
+  release(imageIds: readonly string[] = []): void {
+    const pendingKeys = new Set<string>();
+    for (const imageId of imageIds) {
+      if (!cache.getImageLoadObject(imageId)) continue;
+      pendingKeys.add(wadouri.parseImageId(imageId).url);
+    }
+    releaseImages(imageIds);
+    const { dataSetCacheManager } = wadouri;
     for (const entry of this.files.values()) {
+      if (pendingKeys.has(entry.datasetKey) && !dataSetCacheManager.isLoaded(entry.datasetKey)) {
+        // Join an existing read without starting one. A late read can populate
+        // the dataset cache after Cornerstone's image cache entry is removed.
+        void dataSetCacheManager.load(entry.datasetKey, () => Promise.reject(), entry.baseImageId)
+          .then(() => this.unloadDataset(entry.datasetKey), () => undefined);
+      }
       this.unloadDataset(entry.datasetKey);
       wadouri.fileManager.remove(Number.parseInt(entry.datasetKey, 10));
     }

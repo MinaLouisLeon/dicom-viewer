@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mihawksolutions/dicom-viewer": "0.0.0",
+    "@mihawksolutions/dicom-viewer": "1.0.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
