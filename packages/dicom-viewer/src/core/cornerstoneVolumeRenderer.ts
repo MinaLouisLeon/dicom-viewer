@@ -398,37 +398,41 @@ export async function createCornerstoneVolumeRenderer(
     const generation = volumeGeneration;
     if (images.length === 0) throw new DicomViewerError('NO_DICOM_FILES');
 
-    const imageIds = images.map((image) => files.imageId(image.file, image.frame));
+    const registry = files;
+    const imageIds = images.map((image) => registry.imageId(image.file, image.frame));
     volumeImageIds = imageIds;
     const uniqueFiles = [...new Set(images.map((image) => image.file))];
     const total = uniqueFiles.length + imageIds.length;
     let filesRead = 0;
     onProgress?.({ processed: 0, total });
 
-    const aborted = new Promise<never>((_, reject) => {
-      if (signal.aborted) reject(abortError());
-      signal.addEventListener('abort', () => reject(abortError()), { once: true });
-    });
-    aborted.catch(() => undefined);
+    const loadDataset = async (file: Blob) => {
+      if (generation !== volumeGeneration) throw abortError();
+      await registry.loadDataset(file);
+      throwIfAborted(signal);
+      if (generation !== volumeGeneration) throw abortError();
+      filesRead += 1;
+      onProgress?.({ processed: filesRead, total });
+    };
 
-    // 1. Parse every file so the volume loader can read all slice positions synchronously.
+    // 1. Check the decoded size before reading the rest of the series into memory.
     try {
-      await runBounded(uniqueFiles, READ_CONCURRENCY, signal, async (file) => {
-        await files.loadDataset(file);
-        filesRead += 1;
-        onProgress?.({ processed: filesRead, total });
-      });
+      throwIfAborted(signal);
+      await loadDataset(uniqueFiles[0]!);
+      const firstImageId = imageIds[0]!;
+      const plane = metaData.get('imagePlaneModule', firstImageId) as { rows?: number; columns?: number } | undefined;
+      const estimatedBytes = imageIds.length * (plane?.rows ?? 0) * (plane?.columns ?? 0) * bytesPerVoxel(firstImageId);
+      if (estimatedBytes > maxVolumeBytes) throw new DicomViewerError('VOLUME_TOO_LARGE');
+      // The volume loader needs synchronous access to every slice's metadata.
+      await runBounded(uniqueFiles.slice(1), READ_CONCURRENCY, signal, loadDataset);
     } catch (error) {
       throwIfAborted(signal);
+      if (generation !== volumeGeneration) throw abortError();
+      if (error instanceof DicomViewerError) throw error;
+      if (error instanceof RangeError) throw new DicomViewerError('VOLUME_TOO_LARGE', { cause: error });
       throw classifyLoadError(error);
     }
     if (generation !== volumeGeneration) throw abortError();
-
-    const estimatedBytes = imageIds.length * (() => {
-      const plane = metaData.get('imagePlaneModule', imageIds[0]!) as { rows?: number; columns?: number } | undefined;
-      return (plane?.rows ?? 0) * (plane?.columns ?? 0) * bytesPerVoxel(imageIds[0]!);
-    })();
-    if (estimatedBytes > maxVolumeBytes) throw new DicomViewerError('VOLUME_TOO_LARGE');
 
     // 2. Create viewports. A failing 3D view leaves the cross-sections usable.
     volumeRendering = false;
@@ -456,12 +460,20 @@ export async function createCornerstoneVolumeRenderer(
       load?: (callback: (event: { framesLoaded: number; totalNumFrames: number }) => void) => void;
     };
     type LoadEvent = { framesLoaded: number; totalNumFrames: number };
+    let onAbort!: () => void;
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(abortError());
+      if (signal.aborted) onAbort();
+      else signal.addEventListener('abort', onAbort, { once: true });
+    });
+    aborted.catch(() => undefined);
     try {
       volume = (await Promise.race([
         volumeLoader.createAndCacheVolume(currentVolumeId, { imageIds }),
         aborted,
       ])) as typeof volume;
     } catch (error) {
+      signal.removeEventListener('abort', onAbort);
       throwIfAborted(signal);
       if (error instanceof RangeError) throw new DicomViewerError('VOLUME_TOO_LARGE', { cause: error });
       throw classifyLoadError(error);
@@ -523,6 +535,7 @@ export async function createCornerstoneVolumeRenderer(
       if (error instanceof RangeError) throw new DicomViewerError('VOLUME_TOO_LARGE', { cause: error });
       throw classifyLoadError(error);
     } finally {
+      signal.removeEventListener('abort', onAbort);
       firstFrame.dispose();
       eventTarget.removeEventListener(Enums.Events.IMAGE_VOLUME_MODIFIED, onModified);
     }

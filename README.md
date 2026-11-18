@@ -4,7 +4,7 @@
 - `apps/demo`: standalone React + Vite demo that uses the package's public API.
 - `fixtures/`: synthetic DICOM test data only. See [fixtures/README.md](fixtures/README.md).
 - `scripts/`: fixture generator and clean-consumer smoke test.
-- [Implementation plan](mivo-labs-dicom-viewer-implementation-plan.md)
+- [Implementation plan](mihawksolutions-dicom-viewer-implementation-plan.md)
 
 ```sh
 npm install

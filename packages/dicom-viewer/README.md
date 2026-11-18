@@ -2,7 +2,7 @@
 
 React DICOM viewer for files the user selects on their own device. Built on [Cornerstone3D](https://www.cornerstonejs.org/).
 
-> **Status: pre-release.** 2D and 3D viewing have been exercised with synthetic fixtures. P04 covers packed-consumer compatibility, real-study testing and large-study benchmarks. Install the development tarball to evaluate the package.
+Version 1.0.0 is the initial release. Earlier 2D and 3D browser checks used synthetic fixtures. Manual validation with representative studies, including large-study benchmarks, follows publication.
 
 ## Privacy model
 
@@ -14,7 +14,13 @@ React DICOM viewer for files the user selects on their own device. Built on [Cor
 
 ## Install (Vite + React)
 
-From the repository root, build and pack the viewer:
+After publication, install the version from npm:
+
+```sh
+npm install @mihawksolutions/dicom-viewer@1.0.0
+```
+
+To build and pack locally from the repository root:
 
 ```sh
 npm run build:package
@@ -24,7 +30,7 @@ npm pack --workspace @mihawksolutions/dicom-viewer
 In your React + Vite consumer, install the generated tarball:
 
 ```sh
-npm install /path/to/mihawksolutions-dicom-viewer-0.0.0.tgz
+npm install /path/to/mihawksolutions-dicom-viewer-1.0.0.tgz
 ```
 
 ```ts
@@ -153,7 +159,7 @@ Every selector is scoped under `.mivo-dv`. To theme the viewer, override the `--
 - Not yet verified: real CBCT exports and compressed volumes. The 3D view uses Cornerstone's `CT-Bone` preset, which assumes Hounsfield units; uncalibrated CBCT grey values may need another mapping.
 - Not supported: Deflated Explicit VR Little Endian, files without pixel data (DICOMDIR, SR), and files without Study or Series Instance UIDs. These are listed as skipped files with a reason.
 
-The approved Windows browser and device matrix and real-study validation are pending. The 1 GB input target and the 2 GiB decoded-volume setting are separate quantities. Peak memory also includes source data, decoded images and graphics resources, so the decoded-volume setting does not establish a supported study size.
+The Windows browser and device matrix and real-study validation are pending. The 1 GB input size is a benchmark target. The default 2 GiB decoded-volume estimate is checked after reading the first file and before reading the rest of the series. Peak memory also includes source data, decoded images and graphics resources. A large single-file study is read in full when its dataset is needed, and 3D can retain source datasets alongside decoded slices for the lifetime of the volume.
 
 ## Development
 

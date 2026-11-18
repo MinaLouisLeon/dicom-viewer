@@ -16,7 +16,7 @@ export class DicomViewerError extends Error {
   readonly code: DicomViewerErrorCode;
 
   constructor(code: DicomViewerErrorCode, options?: { cause?: unknown }) {
-    // Message is the code only: never include file names or DICOM values, so errors are safe to log.
+    // The session strips internal causes before exposing errors to the host.
     super(code, options);
     this.name = 'DicomViewerError';
     this.code = code;

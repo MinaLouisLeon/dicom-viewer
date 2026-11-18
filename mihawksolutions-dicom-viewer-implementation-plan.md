@@ -1,6 +1,6 @@
 # @mihawksolutions/dicom-viewer — Implementation Plan
 
-**Status:** Plan approved 18 November 2026 · **Implementation:** P01, P02 and P03 ready for review (P03-04 resource limits wait on P00-02) · **Plan date:** 17 November 2026
+**Status:** 1.0.0 packaged locally · **Publication:** npm scope access and release license pending · **Validation:** manual testing after publication · **Plan date:** 17 November 2026
 
 **npm organization:** mihawksolutions · **npm package:** @mihawksolutions/dicom-viewer
 Build and publish a reusable React DICOM viewer with **both 2D and 3D viewing** in its first npm release. The [Dental Clinic SaaS plan](dental-clinic-saas-implementation-plan.md) depends on that tested release. Begin SaaS implementation after publication and clean-install verification. Use a standalone React + Vite demo to develop and test the package first.
@@ -41,7 +41,7 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 | P01 · Package foundation and demo | P00 (plan approval) | Ready for review | Branch `feat/p01-package-foundation`; see progress log 2026-11-18 |
 | P02 · 2D viewer | P01 | Ready for review | Branch `feat/2d-viewer`; see progress log 2026-11-18 |
 | P03 · 3D CBCT viewer | P02 | Ready for review — P03-01 to P03-03 done; P03-04 orientation and ordering verified, comparison with acceptance limits waits on P00-02 | Branch `feat/3D-CBCT-viewer-q`; see progress log 2026-11-18 |
-| P04 · Compatibility and release candidate | P03 | In progress | Merged into `dev` in PR #4; P04-01 verified with synthetic fixtures, P04-02 and P04-03 partial, P04-04 pending |
+| P04 · Compatibility and release candidate | P03 | Implementation ready for v1 packaging | PR #4 established synthetic compatibility. Manual lifecycle checks and large-study validation follow publication. |
 | P05 · npm publication and SaaS handoff | P04 | Not started | — |
 
 ### P00 · Plan and compatibility baseline
@@ -79,19 +79,21 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 ### P04 · Compatibility and release candidate
 
 - [x] P04-01 Test both modes in a clean Vite consumer using the generated npm tarball. Verify CSS, workers, codecs, declarations, and production build assets.
-- [ ] P04-02 Verify cancellation, host-requested reset on logout, resource disposal, and absence of persistent clinical data or sensitive logging. Synthetic header-scan cancellation and host reset were exercised in Chrome. The 3D late-read cleanup regression test passes. Verify cancellation during an in-flight 2D decode and repeat lifecycle, storage, network and logging checks on the approved matrix.
-- [ ] P04-03 Write quick start, API and compatibility documentation, sample integrations, known limitations, and a changelog. The package README and changelog cover these topics, including a host logout example. The 36-file tarball passes the path allowlist. Review the contents of the release tarball, including source maps, for credentials and patient data.
-- [ ] P04-04 Benchmark representative inputs up to 1 GB, including both a large file and multi-file series. Capture resource use, cancellation responsiveness, repeated open/close behavior, and network evidence. Record supported limits and resolve release-blocking crashes. The representative benchmark remains pending the approved fixtures, Windows matrix and acceptance limits in P00-02.
+- [ ] P04-02 Manually verify cancellation during an active 2D decode, logout reset, resource disposal, and browser storage, network and console behavior after publication. The 1.0.0 code handles late 2D dataset reads during cleanup and strips decoder error causes from host callbacks and viewer state.
+- [x] P04-03 Write the quick start, API and compatibility documentation, sample integrations, known limitations, and changelog. The 1.0.0 archive omits source maps and uses the package file allowlist.
+- [ ] P04-04 Manually benchmark representative single-file and multi-file inputs up to 1 GB after publication. Record hardware, peak resource use, cancellation responsiveness, repeated open and close behavior and network observations. The 1.0.0 renderer checks the decoded-size estimate after the first dataset and before reading the remaining files. The supported input size still needs measurement.
 
 **2026-11-18 initial evidence.** A clean React + Vite production build installed the npm tarball and passed declaration, CSS, decode worker, WASM and lazy-chunk checks under `/dicom-consumer/`. Headless Chrome 157 on Windows with SwiftShader displayed the synthetic JPEG 2000 and JPEG-LS images and both the classic and enhanced CBCT fixtures. Host reset returned to idle and hid the images after each display. Cancelling a deliberately delayed header scan returned to idle. Observed requests were local GETs, with no console errors. Local storage contained only Cornerstone GPU capability and log-level keys. Session storage, IndexedDB, Cache Storage and service worker registrations were empty.
 
 **2026-11-18 review of merged `dev` (7faa269).** `npm run check` passed package and demo builds, workspace type checks and all 94 tests. `npm run smoke:consumer` installed `mihawksolutions-dicom-viewer-0.0.0.tgz` in a fresh React 19 / Vite 8 app, checked declarations with `skipLibCheck: false`, and verified nested-base asset URLs, viewer CSS, the decode worker, five WASM codecs and separate lazy renderer chunks. The browser results above are from PR #4. The fresh runs verified the build and unit tests.
 
-**Acceptance:** The complete packaged UI and both modes pass the approved Windows test matrix from the tarball. The documented large-study benchmark and local-only network checks pass. Document the results and resolve release-blocking issues.
+**2026-11-18 1.0.0 packaging.** The package and demo builds passed. The local npm archive contained 28 allowlisted text files. Inspection found no source maps, sample studies, DICOM file signatures or common credential token formats. Runtime tests and benchmarks are deferred to the owner's manual validation pass.
+
+**Post-publication validation:** Install 1.0.0 from npm and exercise both modes on the supported Windows matrix. Record the large-study benchmark, cleanup and local-only network results, and track any fixes found during this pass.
 
 ### P05 · npm publication and SaaS handoff
 
-- [ ] P05-01 Confirm npm scope access and obtain package-owner approval for the tested release candidate and publication visibility.
+- [ ] P05-01 Confirm authenticated npm scope access and record the package license and publication visibility.
 - [ ] P05-02 Publish @mihawksolutions/dicom-viewer to npm and record the version and release evidence.
 - [ ] P05-03 Install that exact version from npm in a clean React + Vite project and smoke-test both modes. Record the version and results in SaaS task M00-03 before starting SaaS implementation.
 
@@ -121,5 +123,6 @@ Use **Not started**, **In progress**, **Blocked**, **Ready for review**, and **A
 | 2026-11-18 | Toolchain: npm workspaces, Node 22, Vite 8.3.8, React 19.3.1 (peer range `>=18.2 <20`), TypeScript 6.0.3 (TypeScript 7 not used yet because its compiler API is not needed and tooling support is unverified), Vitest 5.1. Cornerstone3D packages pinned to exactly 5.19.4. |
 | 2026-11-18 | Integration: consumers add the `mivoDicomViewer()` Vite plugin from `@mihawksolutions/dicom-viewer/vite`, which serves the codecs, configures the worker build, and aliases `events` to a browser polyfill. Codec path is a prop (`codecBasePath`). |
 | 2026-11-18 | Package stays `private: true` and `UNLICENSED` until P00-01 records the license and P05 approves publication, so it cannot be published by accident. |
+| 2026-11-18 | Package owner requested preparing 1.0.0 now and doing manual compatibility and performance validation after publication. This supersedes the pre-publication test sequence. |
 | 2026-11-18 | 3D scope: orthogonal cross-sections only. Crosshairs translate but never rotate, and slab thickness is off; oblique reformatting is out of scope for the first release. A series opens in 3D only if header geometry forms a regular volume; anything else opens in 2D with the reason. A slice that fails to decode fails the 3D load instead of showing a volume with holes. |
 | 2026-11-18 | Layout is a sticky preference: the 2D/3D choice applies to every later series that supports it, and series that cannot form a volume fall back to 2D. Each layout keeps its own tool (3D defaults to Crosshairs). |
