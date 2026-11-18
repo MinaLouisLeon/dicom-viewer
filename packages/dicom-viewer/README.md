@@ -116,6 +116,10 @@ If your app uses a non-root `base`, pass `codecBasePath={`${base}mivo-dicom-view
 
 When the image is focused (Tab or click), the keyboard works as follows. Arrow keys apply the selected tool. With window/level, Left and Right narrow or widen the window, and Up and Down raise or lower the level, in steps of 5% of the current width. With pan, the arrows move the image. With zoom, Up and Right zoom in. With scroll, the arrows change the image. Page Up and Page Down change the image, Home and End go to the first and last image, `+` and `-` zoom, and `R` resets zoom, pan and window/level. Shift makes each step larger. The image has an accessible description of these keys (`labels.imageViewportHelp`).
 
+With the image or a cross-section focused, press `W` for Window/Level, `P` for Pan, `Z` for Zoom, and `S` for Scroll. Press `C` for Crosshairs in a cross-section. The toolbar has one Tab stop. Use Left and Right to move between enabled buttons, Home and End to jump to either end, and Enter or Space to activate a button.
+
+On a touchscreen, drag with one finger to use the selected tool and pinch with two fingers to zoom. The same gestures work in the cross-sections. In the 3D pane, drag with one finger to rotate and pinch to zoom. On narrow screens, swipe over a pane heading to scroll between panes.
+
 The status bar shows the DICOM window width and center and the zoom relative to fit. If one image in a stack cannot be decoded, the series stays open and a notice names that image (`labels.imageFailed`).
 
 ### 3D layout (CBCT and CT volumes)
@@ -159,7 +163,7 @@ Every selector is scoped under `.mivo-dv`. To theme the viewer, override the `--
 - Not yet verified: real CBCT exports and compressed volumes. The 3D view uses Cornerstone's `CT-Bone` preset, which assumes Hounsfield units; uncalibrated CBCT grey values may need another mapping.
 - Not supported: Deflated Explicit VR Little Endian, files without pixel data (DICOMDIR, SR), and files without Study or Series Instance UIDs. These are listed as skipped files with a reason.
 
-The Windows browser and device matrix and real-study validation are pending. The 1 GB input size is a benchmark target. The default 2 GiB decoded-volume estimate is checked after reading the first file and before reading the rest of the series. Peak memory also includes source data, decoded images and graphics resources. A large single-file study is read in full when its dataset is needed, and 3D can retain source datasets alongside decoded slices for the lifetime of the volume.
+The Windows browser and device matrix and real-study validation are pending. The 1 GB input size is a benchmark target. The default 2 GiB decoded-volume estimate is checked after reading the first file and before reading the rest of the series. Peak memory during loading includes source data, decoded images and graphics resources. Once the 3D volume is ready, the viewer releases its parsed source datasets and keeps the decoded slices and their geometry. A large single-file study is still read in full when its dataset is needed.
 
 ## Development
 

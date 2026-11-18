@@ -23,6 +23,8 @@ import {
 
 import {
   FileRegistry,
+  PINCH_ZOOM_BINDING,
+  PINCH_ZOOM_TOOL,
   TranslateCrosshairsTool,
   classifyLoadError,
   ensureInitialized,
@@ -199,6 +201,7 @@ export async function createCornerstoneVolumeRenderer(
    * 3D viewport refits zoom but keeps the rotation, so reset restores this instead.
    */
   let initialVolumeCamera: Types.ICamera | undefined;
+  const initialPlaneVoi = new Map<VolumePlane, { lower: number; upper: number }>();
   let shown = false;
   let destroyed = false;
 
@@ -243,7 +246,9 @@ export async function createCornerstoneVolumeRenderer(
     mprGroup = group;
     group.addTool(WindowLevelTool.toolName);
     group.addTool(PanTool.toolName);
-    group.addTool(ZoomTool.toolName);
+    group.addTool(ZoomTool.toolName, { pinchToZoom: false });
+    group.addToolInstance(PINCH_ZOOM_TOOL, ZoomTool.toolName, { pinchToZoom: true });
+    group.setToolActive(PINCH_ZOOM_TOOL, { bindings: [PINCH_ZOOM_BINDING] });
     group.addTool(StackScrollTool.toolName);
     group.addTool(TranslateCrosshairsTool.toolName, {
       getReferenceLineColor: (viewportId: string) =>
@@ -274,7 +279,11 @@ export async function createCornerstoneVolumeRenderer(
       group3d.addViewport(viewportIds.volume, engineId);
       group3d.setToolActive(TrackballRotateTool.toolName, { bindings: [PRIMARY_BINDING] });
       group3d.setToolActive(ZoomTool.toolName, {
-        bindings: [{ mouseButton: ToolEnums.MouseBindings.Secondary }, { mouseButton: ToolEnums.MouseBindings.Wheel }],
+        bindings: [
+          { mouseButton: ToolEnums.MouseBindings.Secondary },
+          { mouseButton: ToolEnums.MouseBindings.Wheel },
+          PINCH_ZOOM_BINDING,
+        ],
       });
       group3d.setToolActive(PanTool.toolName, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }] });
     }
@@ -364,6 +373,7 @@ export async function createCornerstoneVolumeRenderer(
     volumeImageIds = [];
     volumeRendering = false;
     initialVolumeCamera = undefined;
+    initialPlaneVoi.clear();
     if (hadVolume) callbacks.onStatusChange?.(undefined);
   };
 
@@ -541,6 +551,11 @@ export async function createCornerstoneVolumeRenderer(
     }
     throwIfAborted(signal);
     if (generation !== volumeGeneration) throw abortError();
+    for (const plane of VOLUME_PLANES) {
+      const voiRange = getPlane(plane)?.getProperties()?.voiRange;
+      if (voiRange) initialPlaneVoi.set(plane, { ...voiRange });
+    }
+    registry.releaseVolumeDatasets(imageIds);
     shown = true;
     scheduleStatus();
   };
@@ -658,7 +673,9 @@ export async function createCornerstoneVolumeRenderer(
       if (!shown) return;
       for (const plane of VOLUME_PLANES) {
         const viewport = getPlane(plane);
-        viewport?.resetProperties();
+        // Reset from the initial range without asking Cornerstone to decode the middle slice again.
+        const voiRange = initialPlaneVoi.get(plane);
+        if (voiRange) viewport?.setProperties({ voiRange });
         viewport?.resetCamera();
       }
       const volume3d = getVolumeViewport('volume');

@@ -8,7 +8,7 @@ import {
   ZoomTool,
 } from '@cornerstonejs/tools';
 
-import { FileRegistry, classifyLoadError, ensureInitialized } from './cornerstoneSetup';
+import { FileRegistry, PINCH_ZOOM_BINDING, PINCH_ZOOM_TOOL, classifyLoadError, ensureInitialized } from './cornerstoneSetup';
 import { DicomViewerError, abortError, throwIfAborted } from './errors';
 import type {
   RendererCallbacks,
@@ -76,7 +76,11 @@ export async function createCornerstoneStackRenderer(
     engine.destroy();
     throw new DicomViewerError('RENDERER_INIT_FAILED');
   }
-  for (const name of Object.values(TOOL_NAMES)) toolGroup.addTool(name);
+  for (const name of Object.values(TOOL_NAMES)) {
+    toolGroup.addTool(name, name === ZoomTool.toolName ? { pinchToZoom: false } : undefined);
+  }
+  toolGroup.addToolInstance(PINCH_ZOOM_TOOL, ZoomTool.toolName, { pinchToZoom: true });
+  toolGroup.setToolActive(PINCH_ZOOM_TOOL, { bindings: [PINCH_ZOOM_BINDING] });
   toolGroup.setToolActive(TOOL_NAMES.scroll, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Wheel }] });
   toolGroup.setToolActive(TOOL_NAMES.zoom, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Secondary }] });
   toolGroup.setToolActive(TOOL_NAMES.pan, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }] });

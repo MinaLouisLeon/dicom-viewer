@@ -1,4 +1,4 @@
-import { cache, init as initCornerstoneCore, isCornerstoneInitialized } from '@cornerstonejs/core';
+import { Enums, cache, init as initCornerstoneCore, isCornerstoneInitialized, metaData, type Types } from '@cornerstonejs/core';
 import { init as initDicomImageLoader, wadouri } from '@cornerstonejs/dicom-image-loader';
 import {
   CrosshairsTool,
@@ -15,6 +15,8 @@ import { DicomViewerError } from './errors';
 import type { RendererConfig } from './renderer';
 
 /** Shared by the 2D and 3D renderers. */
+export const PINCH_ZOOM_TOOL = 'MivoPinchZoom';
+export const PINCH_ZOOM_BINDING = { numTouchPoints: 2 };
 
 /**
  * Crosshairs that move but never rotate or change slab thickness: oblique reformatting
@@ -24,6 +26,19 @@ import type { RendererConfig } from './renderer';
  */
 export class TranslateCrosshairsTool extends CrosshairsTool {
   static override toolName = 'MivoTranslateCrosshairs';
+
+  constructor(...args: ConstructorParameters<typeof CrosshairsTool>) {
+    super(...args);
+    const drag = this._dragCallback;
+    this._dragCallback = (event) => {
+      // End the single-finger crosshair drag when a second finger starts a pinch.
+      if ('currentPointsList' in event.detail && event.detail.currentPointsList.length > 1) {
+        this._endCallback(event);
+        return;
+      }
+      drag(event);
+    };
+  }
 
   override _getRotationHandleNearImagePoint(): null {
     return null;
@@ -94,6 +109,9 @@ interface RegisteredFile {
  */
 export class FileRegistry {
   private readonly files = new Map<Blob, RegisteredFile>();
+  private readonly imagePlanes = new Map<string, unknown>();
+  private readonly volumeMetadataProvider = (type: string, query: unknown) =>
+    type === Enums.MetadataModules.IMAGE_PLANE && typeof query === 'string' ? this.imagePlanes.get(query) : undefined;
 
   private register(file: Blob): RegisteredFile {
     let entry = this.files.get(file);
@@ -130,6 +148,18 @@ export class FileRegistry {
     }
   }
 
+  /** Keeps decoded slices and display metadata while dropping the original dataset buffers. */
+  releaseVolumeDatasets(imageIds: readonly string[]): void {
+    for (const imageId of imageIds) {
+      const plane: unknown = metaData.get(Enums.MetadataModules.IMAGE_PLANE, imageId);
+      if (plane != null) this.imagePlanes.set(imageId, plane);
+      const image = cache.getImage(imageId) as (Types.IImage & { data?: unknown }) | undefined;
+      if (image) delete image.data;
+    }
+    if (this.imagePlanes.size) metaData.addProvider(this.volumeMetadataProvider, 10_000);
+    for (const { datasetKey } of this.files.values()) this.unloadDataset(datasetKey);
+  }
+
   /**
    * Drops the parsed datasets and file registrations of every file in this registry.
    *
@@ -157,6 +187,10 @@ export class FileRegistry {
       wadouri.fileManager.remove(Number.parseInt(entry.datasetKey, 10));
     }
     this.files.clear();
+    if (this.imagePlanes.size) {
+      metaData.removeProvider(this.volumeMetadataProvider);
+      this.imagePlanes.clear();
+    }
   }
 
   private unloadDataset(key: string): void {

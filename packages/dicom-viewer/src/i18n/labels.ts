@@ -140,7 +140,7 @@ export const defaultLabels: DicomViewerLabels = {
   resetView: 'Reset view',
   imageViewport: 'Image',
   imageViewportHelp:
-    'Arrow keys apply the selected tool. Page Up and Page Down change the image, Home and End go to the first and last image, plus and minus zoom, and R resets the view. Hold Shift for larger steps.',
+    'W selects Window/Level, P Pan, Z Zoom, and S Scroll. Arrow keys apply the selected tool. Page Up and Page Down change the image, Home and End go to the first and last image, plus and minus zoom, and R resets the view. Hold Shift for larger steps.',
   sliceControls: 'Image navigation',
   previousImage: 'Previous image',
   nextImage: 'Next image',
@@ -168,7 +168,7 @@ export const defaultLabels: DicomViewerLabels = {
   },
   views: { axial: 'Axial', sagittal: 'Sagittal', coronal: 'Coronal', volume: '3D' },
   planeViewportHelp:
-    'Page Up and Page Down change the slice, Home and End go to the first and last slice. Arrow keys apply the selected tool; with Crosshairs they move the linked position. Plus and minus zoom, and R resets all views. Hold Shift for larger steps.',
+    'C selects Crosshairs, W Window/Level, P Pan, Z Zoom, and S Scroll. Page Up and Page Down change the slice, Home and End go to the first and last slice. Arrow keys apply the selected tool; with Crosshairs they move the linked position. Plus and minus zoom, and R resets all views. Hold Shift for larger steps.',
   volumeViewportHelp: 'Arrow keys rotate the volume. Plus and minus zoom, and R resets all views. Hold Shift for larger steps.',
   sliceSlider: (view) => `${view} slice`,
   slicePosition: (index, count) => `Slice ${index} of ${count}`,
