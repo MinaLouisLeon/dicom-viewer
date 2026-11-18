@@ -27,6 +27,33 @@ beforeEach(() => {
 });
 
 describe('<DicomViewer />', () => {
+  it('uses one toolbar tab stop and moves focus with arrow and boundary keys', async () => {
+    const user = userEvent.setup();
+    render(<DicomViewer />);
+    const files = screen.getByRole('button', { name: 'Open files' });
+    const folder = screen.getByRole('button', { name: 'Open folder' });
+    await user.tab();
+    expect(files).toHaveFocus();
+    expect(folder).toHaveAttribute('tabindex', '-1');
+    await user.keyboard('{ArrowRight}');
+    expect(folder).toHaveFocus();
+    await user.keyboard('{Home}');
+    expect(files).toHaveFocus();
+    await user.keyboard('{End}');
+    expect(folder).toHaveFocus();
+  });
+
+  it('selects the pan tool using a shortcut in the image viewport', async () => {
+    const user = userEvent.setup();
+    render(<DicomViewer />);
+    await user.upload(screen.getByTestId('mivo-dv-file-input'), fixturePaths('single').map(fixtureFile));
+    const pane = screen.getByTestId('mivo-dv-viewport');
+    await waitFor(() => expect(pane).toHaveAttribute('data-visible', 'true'));
+    pane.focus();
+    await user.keyboard('p');
+    expect(screen.getByRole('button', { name: 'Pan' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('shows the drop zone and privacy note before files are opened', () => {
     render(<DicomViewer />);
     expect(screen.getByRole('region', { name: 'DICOM viewer' })).toBeInTheDocument();

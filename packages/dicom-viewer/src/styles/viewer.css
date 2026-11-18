@@ -270,6 +270,7 @@
 
 .mivo-dv-viewport[data-visible] {
   visibility: visible;
+  touch-action: none;
 }
 
 .mivo-dv-overlay {
@@ -443,6 +444,7 @@
 .mivo-dv-pane-viewport {
   position: absolute;
   inset: 0;
+  touch-action: none;
 }
 
 .mivo-dv-pane-notice {

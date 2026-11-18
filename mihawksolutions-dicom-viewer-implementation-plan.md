@@ -99,6 +99,12 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 
 **Acceptance:** The published version is installable and both viewer modes pass the clean-install smoke test.
 
+## Viewer follow-up implementation
+
+The `feat/viewer-touch-keyboard-memory` branch adds one-finger tools and pinch zoom in the 2D viewer and 3D cross-sections, plus touch rotation and pinch zoom in the volume pane. The toolbar uses a single Tab stop with arrow, Home and End navigation. Focused images and cross-sections accept tool shortcuts.
+
+After 3D decoding completes, the viewer drops the source dataset buffers and retains decoded images and slice geometry. The loader still reads full datasets during loading. Chrome touch emulation at phone and tablet viewport sizes exercised the gestures, and both synthetic CBCT series displayed with zero source datasets in the loader cache. Physical-device testing and the large-study benchmark remain open.
+
 ## Progress log
 
 Use **Not started**, **In progress**, **Blocked**, **Ready for review**, and **Accepted**. Keep task IDs stable. Update the tracker at each implementation pass and attach verification before checking a task.

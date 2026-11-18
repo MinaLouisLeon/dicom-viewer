@@ -11,6 +11,7 @@ import {
   useSyncExternalStore,
   type CSSProperties,
   type DragEvent,
+  type FocusEvent,
   type KeyboardEvent,
 } from 'react';
 
@@ -102,6 +103,13 @@ export interface DicomViewerHandle {
 const directoryInputProps = { webkitdirectory: '', directory: '' } as Record<string, string>;
 
 const ZOOM_STEP = 1.2;
+const TOOL_SHORTCUTS: Record<ViewerTool, string> = {
+  windowLevel: 'W',
+  pan: 'P',
+  zoom: 'Z',
+  scroll: 'S',
+  crosshairs: 'C',
+};
 const PAN_STEP_PX = 20;
 /** Multiplier applied to keyboard steps while Shift is held. */
 const LARGE_STEP = 5;
@@ -231,6 +239,40 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
     volume: volumeRef,
   };
   const zoomBy = (factor: number) => (is3d ? session.zoomView(activeView, factor) : session.zoomBy(factor));
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const toolbarTabStop = useRef<HTMLButtonElement>(null);
+  const toolbarButtons = (toolbar: HTMLDivElement) =>
+    Array.from(toolbar.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+  const setToolbarTabStop = (toolbar: HTMLDivElement, button?: HTMLButtonElement) => {
+    const enabled = toolbarButtons(toolbar);
+    const current = button ?? toolbarTabStop.current;
+    const next = current && enabled.includes(current) ? current : enabled[0];
+    for (const item of toolbar.querySelectorAll('button')) item.tabIndex = item === next ? 0 : -1;
+    toolbarTabStop.current = next ?? null;
+  };
+  useLayoutEffect(() => {
+    if (toolbarRef.current) setToolbarTabStop(toolbarRef.current);
+  });
+  const onToolbarFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target instanceof HTMLButtonElement) setToolbarTabStop(event.currentTarget, event.target);
+  };
+  const onToolbarKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof HTMLButtonElement) || event.altKey || event.ctrlKey || event.metaKey) return;
+    const buttons = toolbarButtons(event.currentTarget);
+    const index = buttons.indexOf(event.target);
+    if (index < 0) return;
+    const direction = getComputedStyle(event.currentTarget).direction === 'rtl' ? -1 : 1;
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight': next = (index + direction + buttons.length) % buttons.length; break;
+      case 'ArrowLeft': next = (index - direction + buttons.length) % buttons.length; break;
+      case 'Home': next = 0; break;
+      case 'End': next = buttons.length - 1; break;
+      default: return;
+    }
+    event.preventDefault();
+    buttons[next]?.focus();
+  };
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Escape' && busy) {
@@ -239,8 +281,18 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
     }
   };
 
+  const selectToolShortcut = (event: KeyboardEvent<HTMLDivElement>): boolean => {
+    const tool = toolList.find((item) => TOOL_SHORTCUTS[item].toLowerCase() === event.key.toLowerCase());
+    if (!tool) return false;
+    session.setTool(tool);
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  };
+
   const onViewportKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!displayed || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (selectToolShortcut(event)) return;
     const multiplier = event.shiftKey ? LARGE_STEP : 1;
     const pageStep = event.shiftKey ? Math.max(1, Math.round(imageCount / 10)) : 1;
     const direction = ARROW_DIRECTIONS[event.key];
@@ -315,6 +367,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
       return;
     }
     const plane: VolumePlane = view;
+    if (selectToolShortcut(event)) return;
     const count = volumeStatus.planes[plane].count;
     const pageStep = event.shiftKey ? Math.max(1, Math.round(count / 10)) : 1;
     if (direction) {
@@ -389,7 +442,8 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
 
   return (
     <section className={rootClass} style={style} aria-label={labels.viewerRegion} onKeyDown={onKeyDown}>
-      <div className="mivo-dv-toolbar" role="toolbar" aria-label={labels.toolbar}>
+      <div ref={toolbarRef} className="mivo-dv-toolbar" role="toolbar" aria-label={labels.toolbar}
+        onFocus={onToolbarFocus} onKeyDown={onToolbarKeyDown}>
         <div className="mivo-dv-toolbar-group">
           <button type="button" className="mivo-dv-button" onClick={() => fileInputRef.current?.click()}>
             {labels.openFiles}
@@ -442,6 +496,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                   type="button"
                   className="mivo-dv-button"
                   aria-pressed={viewport.tool === tool}
+                  aria-keyshortcuts={TOOL_SHORTCUTS[tool]}
                   disabled={!displayed}
                   onClick={() => session.setTool(tool)}
                 >
