@@ -1,6 +1,7 @@
 import type { DicomViewerErrorCode } from '../core/errors';
-import type { ViewerTool } from '../core/renderer';
+import type { ViewerLayout, ViewerTool, VolumeView } from '../core/renderer';
 import type { SkippedReason } from '../core/scanFiles';
+import type { VolumeUnsupportedReason } from '../core/volumeGeometry';
 
 /**
  * Every user-visible string in the viewer. Pass a partial object through the
@@ -54,6 +55,31 @@ export interface DicomViewerLabels {
   zoomValue: (zoom: number) => string;
   /** Shown over the viewport when one image of a stack cannot be decoded. `index` is one-based. */
   imageFailed: (index: number, count: number) => string;
+
+  // ── Layout and 3D ──
+  /** Accessible name of the 2D/3D switch. */
+  layoutGroup: string;
+  layouts: Record<ViewerLayout, string>;
+  /** Marks series that can open in 3D, in the series list. */
+  volumeBadge: string;
+  /** Explains why the selected series cannot open in 3D. */
+  volumeUnsupportedReasons: Record<VolumeUnsupportedReason, string>;
+  /** Pane titles of the 3D layout. */
+  views: Record<VolumeView, string>;
+  /** Read by screen readers when a cross-section is focused. */
+  planeViewportHelp: string;
+  /** Read by screen readers when the 3D view is focused. */
+  volumeViewportHelp: string;
+  /** Accessible name of a cross-section's slice slider. */
+  sliceSlider: (view: string) => string;
+  /** `index` is one-based. */
+  slicePosition: (index: number, count: number) => string;
+  /** `processed`/`total` count files read plus slices decoded. */
+  loadingVolume: (processed: number, total: number) => string;
+  /** Shown in the 3D pane when the browser cannot render it or the host turned it off. */
+  volumeRenderingUnavailable: string;
+  /** Button on a 3D error that reopens the series in 2D. */
+  openIn2d: string;
 }
 
 const formatDicomDate = (value: string): string =>
@@ -93,6 +119,11 @@ export const defaultLabels: DicomViewerLabels = {
     RENDERER_INIT_FAILED: 'The viewer could not start in this browser. Make sure hardware acceleration is enabled, then reload the page.',
     IMAGE_LOAD_FAILED: 'These images could not be displayed. The file may be damaged. Try another series or re-export the study.',
     UNSUPPORTED_IMAGE: 'This image uses an encoding the viewer does not support. Try another series or re-export the study.',
+    VOLUME_UNSUPPORTED: 'This series cannot be shown in 3D. Open it in 2D instead.',
+    VOLUME_LOAD_FAILED:
+      'Some slices of this series could not be decoded, so the 3D volume would be incomplete. Open it in 2D to view the readable slices, or re-export the study.',
+    VOLUME_TOO_LARGE:
+      'This series is too large to open in 3D on this device. Open it in 2D, or use a device with more memory.',
   },
   formatStudyDate: formatDicomDate,
 
@@ -102,6 +133,7 @@ export const defaultLabels: DicomViewerLabels = {
     pan: 'Pan',
     zoom: 'Zoom',
     scroll: 'Scroll',
+    crosshairs: 'Crosshairs',
   },
   zoomIn: 'Zoom in',
   zoomOut: 'Zoom out',
@@ -118,6 +150,31 @@ export const defaultLabels: DicomViewerLabels = {
   zoomValue: (zoom) => `Zoom ${Math.round(zoom * 100)}%`,
   imageFailed: (index, count) =>
     `Image ${index} of ${count} could not be displayed. The file may be damaged or use an unsupported encoding. The previous image is still shown.`,
+
+  layoutGroup: 'Layout',
+  layouts: { '2d': '2D', '3d': '3D' },
+  volumeBadge: '3D',
+  volumeUnsupportedReasons: {
+    'too-few-images': '3D needs a series of at least 3 slices.',
+    'color-images': '3D is not available for colour images.',
+    'missing-geometry': '3D is not available: the images lack position or spacing information.',
+    'mixed-dimensions': '3D is not available: the images differ in size or pixel spacing.',
+    'mixed-orientation': '3D is not available: the images are not parallel.',
+    'mixed-frame-of-reference': '3D is not available: the images come from different scans.',
+    'tilted-slices': '3D is not available: the slices are tilted or offset.',
+    'duplicate-positions': '3D is not available: several images share one slice position.',
+    'missing-slices': '3D is not available: slices are missing. Select the complete series.',
+    'irregular-spacing': '3D is not available: the slice spacing is uneven.',
+  },
+  views: { axial: 'Axial', sagittal: 'Sagittal', coronal: 'Coronal', volume: '3D' },
+  planeViewportHelp:
+    'Page Up and Page Down change the slice, Home and End go to the first and last slice. Arrow keys apply the selected tool; with Crosshairs they move the linked position. Plus and minus zoom, and R resets all views. Hold Shift for larger steps.',
+  volumeViewportHelp: 'Arrow keys rotate the volume. Plus and minus zoom, and R resets all views. Hold Shift for larger steps.',
+  sliceSlider: (view) => `${view} slice`,
+  slicePosition: (index, count) => `Slice ${index} of ${count}`,
+  loadingVolume: (processed, total) => `Loading volume… ${Math.round((processed / Math.max(1, total)) * 100)}%`,
+  volumeRenderingUnavailable: '3D rendering is turned off or not available in this browser. The cross-sections still work.',
+  openIn2d: 'Open in 2D',
 };
 
 export function resolveLabels(overrides?: Partial<DicomViewerLabels>): DicomViewerLabels {
@@ -128,5 +185,8 @@ export function resolveLabels(overrides?: Partial<DicomViewerLabels>): DicomView
     skippedReasons: { ...defaultLabels.skippedReasons, ...overrides.skippedReasons },
     errors: { ...defaultLabels.errors, ...overrides.errors },
     tools: { ...defaultLabels.tools, ...overrides.tools },
+    layouts: { ...defaultLabels.layouts, ...overrides.layouts },
+    views: { ...defaultLabels.views, ...overrides.views },
+    volumeUnsupportedReasons: { ...defaultLabels.volumeUnsupportedReasons, ...overrides.volumeUnsupportedReasons },
   };
 }

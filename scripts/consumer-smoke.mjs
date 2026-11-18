@@ -105,6 +105,7 @@ try {
   check('build emits the decode worker', out.some((f) => /decodeImageFrameWorker.*\.js$/.test(f)));
   check('build emits viewer CSS', out.some((f) => f.endsWith('.css') && readFileSync(path.join(dist, f), 'utf8').includes('.mivo-dv')));
   check('Cornerstone is code-split from the entry chunk', out.some((f) => /cornerstoneRenderer.*\.js$/.test(f)));
+  check('3D volume code is a separate lazy chunk', out.some((f) => /cornerstoneVolumeRenderer.*\.js$/.test(f)));
 
   if (keep) console.log(`\nConsumer project kept at: ${app}\nPreview with: npx vite preview (in that folder)`);
 } finally {

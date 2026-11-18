@@ -1,15 +1,4 @@
-import {
-  Enums,
-  RenderingEngine,
-  cache,
-  eventTarget,
-  imageLoader,
-  init as initCornerstoneCore,
-  isCornerstoneInitialized,
-  utilities,
-  type Types,
-} from '@cornerstonejs/core';
-import { init as initDicomImageLoader, wadouri } from '@cornerstonejs/dicom-image-loader';
+import { Enums, RenderingEngine, eventTarget, imageLoader, utilities, type Types } from '@cornerstonejs/core';
 import {
   Enums as ToolEnums,
   PanTool,
@@ -17,10 +6,9 @@ import {
   ToolGroupManager,
   WindowLevelTool,
   ZoomTool,
-  addTool,
-  init as initTools,
 } from '@cornerstonejs/tools';
 
+import { FileRegistry, classifyLoadError, ensureInitialized, releaseImages } from './cornerstoneSetup';
 import { DicomViewerError, abortError, throwIfAborted } from './errors';
 import type {
   RendererCallbacks,
@@ -31,35 +19,9 @@ import type {
   ViewportStatus,
 } from './renderer';
 
-let initialization: Promise<void> | undefined;
+type StackTool = Exclude<ViewerTool, 'crosshairs'>;
 
-/**
- * Initializes Cornerstone once per page. The first viewer's codec path and worker
- * count apply to every viewer on the page.
- */
-function ensureInitialized(config: RendererConfig): Promise<void> {
-  initialization ??= (async () => {
-    if (!isCornerstoneInitialized()) {
-      initCornerstoneCore();
-    }
-    initDicomImageLoader({
-      maxWebWorkers: config.maxWebWorkers,
-      wasmBasePath: config.codecBasePath,
-      // Cornerstone 5.19's default (naturalized) metadata path does not decode local
-      // dicomfile: images. The dataset-based provider does, and its per-file cache is
-      // what releaseFiles() unloads. Revisit when upgrading Cornerstone.
-      useLegacyMetadataProvider: true,
-    });
-    initTools();
-    for (const Tool of [WindowLevelTool, PanTool, ZoomTool, StackScrollTool]) addTool(Tool);
-  })().catch((error: unknown) => {
-    initialization = undefined;
-    throw new DicomViewerError('RENDERER_INIT_FAILED', { cause: error });
-  });
-  return initialization;
-}
-
-const TOOL_NAMES: Record<ViewerTool, string> = {
+const TOOL_NAMES: Record<StackTool, string> = {
   windowLevel: WindowLevelTool.toolName,
   pan: PanTool.toolName,
   zoom: ZoomTool.toolName,
@@ -83,28 +45,6 @@ const STATUS_EVENTS = [
 ] as const;
 
 let instanceCounter = 0;
-
-interface RegisteredFile {
-  index: number;
-  baseImageId: string;
-}
-
-function parseFileIndex(baseImageId: string): number {
-  return Number.parseInt(baseImageId.slice('dicomfile:'.length), 10);
-}
-
-function imageIdsFor(file: RegisteredFile, numberOfFrames: number): string[] {
-  if (numberOfFrames <= 1) return [file.baseImageId];
-  return Array.from({ length: numberOfFrames }, (_, frame) => `${file.baseImageId}?frame=${frame + 1}`);
-}
-
-function classifyLoadError(error: unknown): DicomViewerError {
-  const message = error instanceof Error ? error.message : String(error);
-  if (/transfer syntax|no decoder|not supported/i.test(message)) {
-    return new DicomViewerError('UNSUPPORTED_IMAGE', { cause: error });
-  }
-  return new DicomViewerError('IMAGE_LOAD_FAILED', { cause: error });
-}
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -141,9 +81,11 @@ export async function createCornerstoneStackRenderer(
   toolGroup.setToolActive(TOOL_NAMES.zoom, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Secondary }] });
   toolGroup.setToolActive(TOOL_NAMES.pan, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }] });
   toolGroup.addViewport(viewportId, engineId);
-  let primaryTool: ViewerTool | undefined;
+  let primaryTool: StackTool | undefined;
 
-  const setTool = (tool: ViewerTool): void => {
+  const setTool = (requested: ViewerTool): void => {
+    // Crosshairs have no meaning for a single stack.
+    const tool: StackTool = requested === 'crosshairs' ? 'windowLevel' : requested;
     if (tool === primaryTool) return;
     // Passive mode removes only the primary binding, so the fixed bindings above stay.
     if (primaryTool) toolGroup.setToolPassive(TOOL_NAMES[primaryTool]);
@@ -153,7 +95,7 @@ export async function createCornerstoneStackRenderer(
   setTool('windowLevel');
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const files = new Map<Blob, RegisteredFile>();
+  const files = new FileRegistry();
   let displayedImageIds: string[] = [];
   let imageIndexById = new Map<string, number>();
   const failedIndices = new Set<number>();
@@ -213,36 +155,6 @@ export async function createCornerstoneStackRenderer(
         });
   resizeObserver?.observe(element);
 
-  // ── Resource release ──────────────────────────────────────────────────────
-  const releaseImages = (imageIds: readonly string[]): void => {
-    for (const imageId of imageIds) {
-      if (cache.getImageLoadObject(imageId)) {
-        try {
-          cache.removeImageLoadObject(imageId, { force: true });
-        } catch {
-          // Already evicted.
-        }
-      }
-    }
-  };
-
-  const releaseFiles = (): void => {
-    for (const file of files.values()) {
-      wadouri.dataSetCacheManager.unload(file.baseImageId);
-      wadouri.fileManager.remove(file.index);
-    }
-    files.clear();
-  };
-
-  const register = (file: Blob): RegisteredFile => {
-    const existing = files.get(file);
-    if (existing) return existing;
-    const baseImageId = wadouri.fileManager.add(file);
-    const registered = { index: parseFileIndex(baseImageId), baseImageId };
-    files.set(file, registered);
-    return registered;
-  };
-
   const clear = (): void => {
     if (destroyed) return;
     const hadStack = shown;
@@ -251,7 +163,7 @@ export async function createCornerstoneStackRenderer(
     displayedImageIds = [];
     imageIndexById = new Map();
     failedIndices.clear();
-    releaseFiles();
+    files.release();
     try {
       // Detach the previous stack so the canvas no longer shows released pixels.
       engine?.disableElement(viewportId);
@@ -304,7 +216,7 @@ export async function createCornerstoneStackRenderer(
       throwIfAborted(signal);
       clear();
 
-      const imageIds = images.flatMap((image) => imageIdsFor(register(image.file), image.numberOfFrames));
+      const imageIds = images.flatMap((image) => files.imageIds(image.file, image.numberOfFrames));
       displayedImageIds = imageIds;
       imageIndexById = new Map(imageIds.map((imageId, index) => [imageId, index]));
       if (imageIds.length === 0) throw new DicomViewerError('NO_DICOM_FILES');

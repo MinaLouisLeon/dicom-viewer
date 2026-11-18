@@ -1,4 +1,5 @@
 import type { DicomInstanceHeader } from './dicomHeader';
+import { assessVolume, type VolumeFrame, type VolumeSupport } from './volumeGeometry';
 
 /** A locally selected DICOM file with its parsed header. Held in memory only. */
 export interface LocalInstance {
@@ -21,6 +22,8 @@ export interface SeriesSummary {
   imageCount: number;
   rows?: number;
   columns?: number;
+  /** Whether the series can be opened in the 3D layout, decided from header geometry. */
+  volume: VolumeSupport;
 }
 
 /** Public, file-free description of a study. */
@@ -36,6 +39,8 @@ export interface LocalSeries {
   summary: SeriesSummary;
   /** Instances in display order. */
   instances: LocalInstance[];
+  /** Slices ordered along the slice normal, when `summary.volume.supported`. */
+  volumeFrames?: VolumeFrame[];
 }
 
 export interface LocalStudy {
@@ -119,8 +124,10 @@ export function groupInstances(instances: readonly LocalInstance[]): LocalStudy[
     for (const [seriesInstanceUid, members] of seriesMap) {
       const ordered = orderInstances(members);
       const head = ordered[0]?.header;
+      const volume = assessVolume(ordered);
       series.push({
         instances: ordered,
+        volumeFrames: volume.frames,
         summary: {
           studyInstanceUid,
           seriesInstanceUid,
@@ -131,6 +138,7 @@ export function groupInstances(instances: readonly LocalInstance[]): LocalStudy[
           imageCount: ordered.reduce((total, item) => total + item.header.numberOfFrames, 0),
           rows: head?.rows,
           columns: head?.columns,
+          volume: volume.support,
         },
       });
     }
