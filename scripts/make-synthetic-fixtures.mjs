@@ -355,10 +355,10 @@ function commonPatient() {
   ];
 }
 
-async function intraoral({ name, transferSyntaxUid, seriesNumber, description }) {
+async function intraoral({ name, transferSyntaxUid, seriesNumber, description, pattern = intraoralPattern }) {
   const width = 640;
   const height = 480;
-  const pixels = intraoralPattern(width, height);
+  const pixels = pattern(width, height);
   const studyUid = uid('study-intraoral');
   const seriesUid = uid(`series-${name}`);
   const sopInstanceUid = uid(`instance-${name}`);
@@ -411,16 +411,66 @@ async function intraoral({ name, transferSyntaxUid, seriesNumber, description })
   });
 }
 
+function demoDental(width, height) {
+  const pixels = new Uint16Array(width * height);
+  const teeth = [0.11, 0.27, 0.43, 0.59, 0.75, 0.91];
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const u = x / width;
+      const v = y / height;
+      const texture = 36 * Math.sin(x * 0.36 + y * 0.24) + 24 * Math.cos(x * 0.91 - y * 0.65);
+      let value = 450 + texture + Math.max(0, 1 - Math.abs(v - 0.56) * 3.5) * 510;
+      for (const center of teeth) {
+        const crownY = 0.69 + 0.12 * (center - 0.5) ** 2;
+        const dx = u - center + (v - crownY) * (center - 0.5) * 0.27;
+        const crown = (dx / 0.075) ** 4 + ((v - crownY) / 0.105) ** 4;
+        const rootY = (v - crownY + 0.16) / 0.16;
+        const root = ((Math.abs(dx) - 0.023) / 0.019) ** 2 + rootY ** 2;
+        if (crown < 1) value = 2350 + 1050 * crown + texture;
+        if (root < 1) value = Math.max(value, 1650 + 570 * root + texture);
+        if (root < 0.09) value -= 520;
+      }
+      pixels[y * width + x] = Math.round(value);
+    }
+  }
+  return pixels;
+}
+
+function demoHead(size, index, depth) {
+  const pixels = new Uint16Array(size * size);
+  const z = (index - depth / 2) / (depth / 2);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const u = (x - size / 2) / (size / 2);
+      const v = (y - size / 2) / (size / 2);
+      const skull = (u / 0.75) ** 2 + (v / 0.87) ** 2 + (z / 1.35) ** 2;
+      const orbit = ((Math.abs(u) - 0.29) / 0.18) ** 2
+        + ((v + 0.58) / 0.15) ** 2 + ((z + 0.38) / 0.3) ** 2;
+      const ventricle = ((Math.abs(u) - 0.1) / 0.08) ** 2
+        + (v / 0.28) ** 2 + ((z - 0.17) / 0.52) ** 2;
+      let hu = -1000;
+      if (skull < 1.12) hu = -80;
+      if (skull < 1) hu = 1050 + 160 * Math.cos(x * 0.25 + y * 0.12);
+      if (skull < 0.86) hu = 40 + 10 * Math.sin(x * 0.33 + y * 0.26 + index * 0.17);
+      if (orbit < 1 && skull < 1.12) hu = orbit > 0.8 ? 450 : -40;
+      if (ventricle < 1) hu = 8;
+      pixels[y * size + x] = Math.round(hu + 1024);
+    }
+  }
+  return pixels;
+}
+
 function ctStackSlice(
   index,
   depth,
   size,
-  { seriesKey = 'series-ct-stack', instanceKey = 'instance-ct', seriesNumber = 1, description = 'Sphere phantom axial' } = {},
+  { seriesKey = 'series-ct-stack', instanceKey = 'instance-ct', seriesNumber = 1,
+    description = 'Sphere phantom axial', pattern = ctSlice, frameUid, window = [400, 2000] } = {},
 ) {
   const studyUid = uid('study-ct');
   const seriesUid = uid(seriesKey);
   const sopInstanceUid = uid(`${instanceKey}-${index}`);
-  const pixels = ctSlice(size, index, depth);
+  const pixels = pattern(size, index, depth);
   const zPosition = (index * 2.5).toFixed(2);
   return part10({
     sopClassUid: SOP.ct,
@@ -440,6 +490,7 @@ function ctStackSlice(
       element([0x0020, 0x0013], 'IS', String(index + 1)),
       element([0x0020, 0x0032], 'DS', ['-64', '-64', zPosition]),
       element([0x0020, 0x0037], 'DS', ['1', '0', '0', '0', '1', '0']),
+      ...(frameUid ? [element([0x0020, 0x0052], 'UI', frameUid)] : []),
       element([0x0028, 0x0002], 'US', 1),
       element([0x0028, 0x0004], 'CS', 'MONOCHROME2'),
       element([0x0028, 0x0010], 'US', size),
@@ -449,8 +500,8 @@ function ctStackSlice(
       element([0x0028, 0x0101], 'US', 16),
       element([0x0028, 0x0102], 'US', 15),
       element([0x0028, 0x0103], 'US', 0),
-      element([0x0028, 0x1050], 'DS', '400'),
-      element([0x0028, 0x1051], 'DS', '2000'),
+      element([0x0028, 0x1050], 'DS', String(window[0])),
+      element([0x0028, 0x1051], 'DS', String(window[1])),
       element([0x0028, 0x1052], 'DS', '-1024'),
       element([0x0028, 0x1053], 'DS', '1'),
       element([0x7fe0, 0x0010], 'OW', Buffer.from(pixels.buffer)),
@@ -459,6 +510,28 @@ function ctStackSlice(
 }
 
 async function main() {
+  if (process.argv.includes('--demo')) {
+    const sampleDir = path.join(root, 'apps', 'demo', 'public', 'samples');
+    mkdirSync(path.join(sampleDir, 'head'), { recursive: true });
+    for (const [file, transferSyntaxUid] of [
+      ['dental.dcm', TS.explicitLE],
+      ['dental-jpeg2000.dcm', TS.jpeg2000Lossless],
+    ]) {
+      writeFileSync(path.join(sampleDir, file), await intraoral({
+        name: file, transferSyntaxUid, seriesNumber: 1, description: 'Dental radiograph phantom',
+        pattern: demoDental,
+      }));
+    }
+    const depth = 48;
+    for (let index = 0; index < depth; index += 1) {
+      const filename = `ct-${String(index + 1).padStart(3, '0')}.dcm`;
+      writeFileSync(path.join(sampleDir, 'head', filename), ctStackSlice(index, depth, 160, {
+        seriesKey: 'demo-head', instanceKey: 'demo-head', description: 'Head CT phantom',
+        pattern: demoHead, frameUid: uid('demo-head-frame'), window: [65, 220],
+      }));
+    }
+    return;
+  }
   rmSync(outDir, { recursive: true, force: true });
   const write = (relative, data) => {
     const target = path.join(outDir, relative);

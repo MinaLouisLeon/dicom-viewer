@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "predev": "node ../../scripts/make-synthetic-fixtures.mjs --demo",
+    "prebuild": "node ../../scripts/make-synthetic-fixtures.mjs --demo"
   },
   "dependencies": {
     "@mihawksolutions/dicom-viewer": "1.0.0",

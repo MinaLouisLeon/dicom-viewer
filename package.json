@@ -17,6 +17,8 @@
     "test": "npm run test -w @mihawksolutions/dicom-viewer",
     "check": "npm run build:package && npm run typecheck && npm run test && npm run build -w @mihawksolutions/dicom-viewer-demo",
     "fixtures": "node scripts/make-synthetic-fixtures.mjs",
-    "smoke:consumer": "node scripts/consumer-smoke.mjs"
+    "smoke:consumer": "node scripts/consumer-smoke.mjs",
+    "build:pages": "node scripts/build-pages.mjs",
+    "preview:pages": "npm run preview -w @mihawksolutions/dicom-viewer-docs --"
   }
 }
