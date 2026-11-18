@@ -4,7 +4,13 @@ export type DicomViewerErrorCode =
   | 'FILE_READ_FAILED'
   | 'RENDERER_INIT_FAILED'
   | 'IMAGE_LOAD_FAILED'
-  | 'UNSUPPORTED_IMAGE';
+  | 'UNSUPPORTED_IMAGE'
+  /** The series cannot be assembled into a volume (see `SeriesSummary.volume.reason`). */
+  | 'VOLUME_UNSUPPORTED'
+  /** One or more slices failed to decode, so the volume would be incomplete. */
+  | 'VOLUME_LOAD_FAILED'
+  /** The decoded volume would exceed the memory this viewer allows, or allocation failed. */
+  | 'VOLUME_TOO_LARGE';
 
 export class DicomViewerError extends Error {
   readonly code: DicomViewerErrorCode;

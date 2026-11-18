@@ -23,6 +23,16 @@ export interface DicomInstanceHeader {
   numberOfFrames: number;
   imagePositionPatient?: [number, number, number];
   imageOrientationPatient?: [number, number, number, number, number, number];
+  /** Pixel Spacing: distance between rows, then between columns, in mm. */
+  pixelSpacing?: [number, number];
+  frameOfReferenceUid?: string;
+  samplesPerPixel?: number;
+  bitsAllocated?: number;
+  /**
+   * Per-frame Image Position (Patient) of an enhanced multi-frame image, from the
+   * Per-Frame Functional Groups. One entry per frame when every frame has one.
+   */
+  framePositions?: [number, number, number][];
   hasPixelData: boolean;
 }
 
@@ -70,12 +80,49 @@ function uint16(dataSet: DataSet, tag: string): number | undefined {
   return dataSet.elements[tag] ? dataSet.uint16(tag) : undefined;
 }
 
-function decimals<N extends number>(dataSet: DataSet, tag: string, count: N): number[] | undefined {
+function decimals(dataSet: DataSet | undefined, tag: string, count: number): number[] | undefined {
+  if (!dataSet) return undefined;
   const raw = str(dataSet, tag);
   if (!raw) return undefined;
   const values = raw.split('\\').map((part) => Number.parseFloat(part));
   if (values.length !== count || values.some((value) => !Number.isFinite(value))) return undefined;
   return values;
+}
+
+const SHARED_FUNCTIONAL_GROUPS = 'x52009229';
+const PER_FRAME_FUNCTIONAL_GROUPS = 'x52009230';
+const PIXEL_MEASURES = 'x00289110';
+const PLANE_POSITION = 'x00209113';
+const PLANE_ORIENTATION = 'x00209116';
+
+/** First item of a sequence element, if present. */
+function firstItem(dataSet: DataSet | undefined, tag: string): DataSet | undefined {
+  return dataSet?.elements[tag]?.items?.[0]?.dataSet;
+}
+
+/**
+ * Reads a value from the top level, falling back to the Shared Functional Groups and
+ * then to the first frame's functional groups (enhanced multi-frame images).
+ */
+function functionalValue(dataSet: DataSet, macro: string, tag: string, count: number): number[] | undefined {
+  return (
+    decimals(dataSet, tag, count) ??
+    decimals(firstItem(firstItem(dataSet, SHARED_FUNCTIONAL_GROUPS), macro), tag, count) ??
+    decimals(firstItem(firstItem(dataSet, PER_FRAME_FUNCTIONAL_GROUPS), macro), tag, count)
+  );
+}
+
+/** Per-frame positions of an enhanced multi-frame image, or undefined if any frame lacks one. */
+function readFramePositions(dataSet: DataSet, numberOfFrames: number): [number, number, number][] | undefined {
+  const items = dataSet.elements[PER_FRAME_FUNCTIONAL_GROUPS]?.items;
+  if (!items || items.length !== numberOfFrames) return undefined;
+  const positions: [number, number, number][] = [];
+  for (const item of items) {
+    const position = decimals(firstItem(item.dataSet, PLANE_POSITION), 'x00200032', 3);
+    if (!position) return undefined;
+    positions.push(position as [number, number, number]);
+  }
+  return positions;
 }
 
 /** True when every element the parser saw lies fully inside the bytes it was given. */
@@ -101,8 +148,11 @@ export function extractHeader(dataSet: DataSet): HeaderReadResult {
   if (!hasPixelData) return { kind: 'unsupported', reason: 'no-pixel-data' };
   if (!studyInstanceUid || !seriesInstanceUid) return { kind: 'unsupported', reason: 'missing-uids' };
 
-  const position = decimals(dataSet, 'x00200032', 3);
-  const orientation = decimals(dataSet, 'x00200037', 6);
+  const numberOfFrames = Math.max(1, int(dataSet, 'x00280008') ?? 1);
+  const framePositions = numberOfFrames > 1 ? readFramePositions(dataSet, numberOfFrames) : undefined;
+  const position = decimals(dataSet, 'x00200032', 3) ?? framePositions?.[0];
+  const orientation = functionalValue(dataSet, PLANE_ORIENTATION, 'x00200037', 6);
+  const pixelSpacing = functionalValue(dataSet, PIXEL_MEASURES, 'x00280030', 2);
 
   return {
     kind: 'dicom',
@@ -120,9 +170,14 @@ export function extractHeader(dataSet: DataSet): HeaderReadResult {
       instanceNumber: int(dataSet, 'x00200013'),
       rows: uint16(dataSet, 'x00280010'),
       columns: uint16(dataSet, 'x00280011'),
-      numberOfFrames: Math.max(1, int(dataSet, 'x00280008') ?? 1),
+      numberOfFrames,
       imagePositionPatient: position as DicomInstanceHeader['imagePositionPatient'],
       imageOrientationPatient: orientation as DicomInstanceHeader['imageOrientationPatient'],
+      pixelSpacing: pixelSpacing as DicomInstanceHeader['pixelSpacing'],
+      frameOfReferenceUid: str(dataSet, 'x00200052'),
+      samplesPerPixel: uint16(dataSet, 'x00280002'),
+      bitsAllocated: uint16(dataSet, 'x00280100'),
+      framePositions,
       hasPixelData,
     },
   };

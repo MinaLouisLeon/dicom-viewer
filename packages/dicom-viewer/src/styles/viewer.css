@@ -17,6 +17,9 @@
   --mivo-dv-radius: 6px;
   --mivo-dv-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mivo-dv-sidebar-width: 260px;
+  --mivo-dv-axial: rgb(230, 80, 80);
+  --mivo-dv-sagittal: rgb(230, 200, 60);
+  --mivo-dv-coronal: rgb(80, 200, 110);
 
   box-sizing: border-box;
   display: flex;
@@ -104,6 +107,7 @@
 }
 
 .mivo-dv-viewport:focus-visible,
+.mivo-dv-pane-viewport:focus-visible,
 .mivo-dv-slider:focus-visible,
 .mivo-dv-button:focus-visible,
 .mivo-dv-series:focus-visible,
@@ -341,7 +345,135 @@
   }
 }
 
-/* The viewport fills the stage, so draw its focus ring inside. */
-.mivo-dv-viewport:focus-visible {
+/* The viewports fill their containers, so draw focus rings inside. */
+.mivo-dv-viewport:focus-visible,
+.mivo-dv-pane-viewport:focus-visible {
   outline-offset: -2px;
+}
+
+/* ── 3D layout ─────────────────────────────────────────────────────────────── */
+
+.mivo-dv-badge {
+  margin-inline-start: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--mivo-dv-border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mivo-dv-text);
+}
+
+.mivo-dv-volume-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  background: var(--mivo-dv-border);
+  visibility: hidden;
+}
+
+.mivo-dv-volume-grid[data-visible] {
+  visibility: visible;
+}
+
+.mivo-dv-pane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #000;
+}
+
+.mivo-dv-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--mivo-dv-muted);
+  background: var(--mivo-dv-surface);
+}
+
+.mivo-dv-pane-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--mivo-dv-text);
+}
+
+.mivo-dv-pane-title::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mivo-dv-pane-color, var(--mivo-dv-muted));
+}
+
+.mivo-dv-pane[data-view='axial'] {
+  --mivo-dv-pane-color: var(--mivo-dv-axial);
+}
+
+.mivo-dv-pane[data-view='sagittal'] {
+  --mivo-dv-pane-color: var(--mivo-dv-sagittal);
+}
+
+.mivo-dv-pane[data-view='coronal'] {
+  --mivo-dv-pane-color: var(--mivo-dv-coronal);
+}
+
+.mivo-dv-pane[data-active] .mivo-dv-pane-header {
+  box-shadow: inset 0 -2px 0 var(--mivo-dv-pane-color, var(--mivo-dv-accent));
+}
+
+.mivo-dv-pane-position {
+  font-variant-numeric: tabular-nums;
+}
+
+.mivo-dv-pane-canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mivo-dv-pane-viewport {
+  position: absolute;
+  inset: 0;
+}
+
+.mivo-dv-pane-notice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--mivo-dv-muted);
+}
+
+.mivo-dv-pane-slider {
+  /* The shared slider rule grows along the main axis; in this column it must not. */
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0;
+  padding: 4px 8px;
+  background: var(--mivo-dv-surface);
+}
+
+.mivo-dv-error-action {
+  margin-top: 12px;
+  color: var(--mivo-dv-text);
+}
+
+@media (max-width: 640px) {
+  .mivo-dv-volume-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, minmax(160px, 1fr));
+    overflow-y: auto;
+  }
 }

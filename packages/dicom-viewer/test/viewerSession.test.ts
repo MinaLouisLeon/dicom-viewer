@@ -37,7 +37,7 @@ describe('ViewerSession', () => {
     expect(state.selectedSeriesUid).toBe(state.studies[0]?.series[0]?.seriesInstanceUid);
     expect(renderer.shown[0]).toHaveLength(12);
     expect(events.onStudiesLoaded).toHaveBeenCalledOnce();
-    expect(events.onSeriesDisplayed).toHaveBeenCalledWith(expect.objectContaining({ imageCount: 12 }));
+    expect(events.onSeriesDisplayed).toHaveBeenCalledWith(expect.objectContaining({ imageCount: 12 }), '2d');
     expect(events.onError).not.toHaveBeenCalled();
   });
 

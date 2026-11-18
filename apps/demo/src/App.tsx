@@ -23,6 +23,13 @@ const SAMPLES: Record<string, string[]> = {
     (_, index) => `synthetic/damaged-stack/ct-${String(index + 1).padStart(3, '0')}.dcm`,
   ),
   'Invalid files': ['synthetic/invalid/not-dicom.txt', 'synthetic/invalid/truncated-pixel-data.dcm'],
+  'CBCT phantom (3 series)': [
+    ...Array.from({ length: 64 }, (_, index) => `synthetic/cbct/cbct-${String(index + 1).padStart(3, '0')}.dcm`),
+    'synthetic/cbct-multiframe/cbct-enhanced.dcm',
+    ...Array.from({ length: 16 }, (_, index) => index)
+      .filter((index) => index !== 8)
+      .map((index) => `synthetic/cbct-missing-slice/cbct-${String(index + 1).padStart(3, '0')}.dcm`),
+  ],
 };
 
 const frenchLabels: Partial<DicomViewerLabels> = {
@@ -56,6 +63,8 @@ export function App() {
   const viewerRef = useRef<DicomViewerHandle>(null);
   const [files, setFiles] = useState<File[] | undefined>();
   const [locale, setLocale] = useState<'en' | 'fr'>('en');
+  // Read once by the viewer, so changing it remounts the viewer (via `key`).
+  const [volumeRendering, setVolumeRendering] = useState(true);
   const [phase, setPhase] = useState<ViewerState['phase']>('idle');
   const [log, setLog] = useState<LogEntry[]>([]);
 
@@ -94,6 +103,14 @@ export function App() {
             Simulate logout (clear)
           </button>
           <label>
+            <input
+              type="checkbox"
+              checked={volumeRendering}
+              onChange={(event) => setVolumeRendering(event.target.checked)}
+            />{' '}
+            3D volume rendering
+          </label>
+          <label>
             Labels{' '}
             <select value={locale} onChange={(event) => setLocale(event.target.value as 'en' | 'fr')}>
               <option value="en">English (default)</option>
@@ -106,14 +123,21 @@ export function App() {
       <main className="demo-main">
         <div className="demo-viewer">
           <DicomViewer
+            key={volumeRendering ? 'vr-on' : 'vr-off'}
             ref={viewerRef}
+            volumeRendering={volumeRendering}
             files={files}
             labels={locale === 'fr' ? frenchLabels : undefined}
             onStateChange={(state) => setPhase(state.phase)}
             onStudiesLoaded={(studies) =>
               addLog(`studies loaded: ${studies.length} study, ${studies.reduce((n, s) => n + s.series.length, 0)} series`)
             }
-            onSeriesDisplayed={(series) => addLog(`series displayed: ${series.imageCount} images`)}
+            onSeriesDisplayed={(series, layout) =>
+              addLog(
+                `series displayed (${layout}): ${series.imageCount} images` +
+                  (series.volume.supported ? ` · volume ${series.volume.dimensions.join('×')}` : ''),
+              )
+            }
             onError={(error) => {
               addLog(`error: ${error.code}`);
               // Development aid only. The cause comes from the decoder and holds no file names.
