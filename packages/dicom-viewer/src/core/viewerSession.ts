@@ -1,5 +1,5 @@
 import { DicomViewerError, isAbortError } from './errors';
-import type { CreateRenderer, RendererConfig, StackRenderer } from './renderer';
+import type { CreateRenderer, RendererConfig, StackRenderer, ViewerTool, ViewportStatus } from './renderer';
 import { scanFiles, type ScanOptions, type SkippedFile } from './scanFiles';
 import type { LocalSeries, LocalStudy, SeriesSummary, StudySummary } from './studyModel';
 
@@ -33,6 +33,17 @@ export interface ViewerState {
   error?: DicomViewerError;
 }
 
+/**
+ * Interactive view state, kept apart from `ViewerState` because it changes on every
+ * scroll, drag or zoom step and the host rarely needs it.
+ */
+export interface ViewportState {
+  /** Tool bound to the primary mouse button and the arrow keys. Kept across studies. */
+  tool: ViewerTool;
+  /** Present while a series is displayed. */
+  status?: ViewportStatus;
+}
+
 export interface ViewerSessionEvents {
   onStateChange?: (state: ViewerState) => void;
   onStudiesLoaded?: (studies: StudySummary[]) => void;
@@ -48,6 +59,8 @@ export interface ViewerSessionOptions {
   scan?: (files: readonly Blob[], options: ScanOptions) => ReturnType<typeof scanFiles>;
   /** Minimum interval between progress notifications. */
   progressIntervalMs?: number;
+  /** @default 'windowLevel' */
+  initialTool?: ViewerTool;
 }
 
 export const INITIAL_VIEWER_STATE: ViewerState = Object.freeze({
@@ -61,14 +74,20 @@ export class ViewerSession {
   private readonly listeners = new Set<() => void>();
   private readonly options: ViewerSessionOptions;
 
+  private viewport: ViewportState;
+  private readonly viewportListeners = new Set<() => void>();
+
   private element: HTMLDivElement | undefined;
   private rendererPromise: Promise<StackRenderer> | undefined;
+  /** The resolved renderer, for synchronous view controls. */
+  private renderer: StackRenderer | undefined;
   private studies: LocalStudy[] = [];
   private operation: AbortController | undefined;
   private generation = 0;
 
   constructor(options: ViewerSessionOptions) {
     this.options = options;
+    this.viewport = { tool: options.initialTool ?? 'windowLevel' };
   }
 
   // ── Store ────────────────────────────────────────────────────────────────
@@ -84,6 +103,20 @@ export class ViewerSession {
     this.state = replace ? { ...INITIAL_VIEWER_STATE, ...patch } : { ...this.state, ...patch };
     for (const listener of this.listeners) listener();
     this.events().onStateChange?.(this.state);
+  }
+
+  getViewportState = (): ViewportState => this.viewport;
+
+  subscribeViewport = (listener: () => void): (() => void) => {
+    this.viewportListeners.add(listener);
+    return () => this.viewportListeners.delete(listener);
+  };
+
+  private setViewport(patch: Partial<ViewportState>): void {
+    const next = { ...this.viewport, ...patch };
+    if (next.tool === this.viewport.tool && sameStatus(next.status, this.viewport.status)) return;
+    this.viewport = next;
+    for (const listener of this.viewportListeners) listener();
   }
 
   private events(): ViewerSessionEvents {
@@ -104,6 +137,7 @@ export class ViewerSession {
     this.reset();
     const renderer = this.rendererPromise;
     this.rendererPromise = undefined;
+    this.renderer = undefined;
     this.element = undefined;
     renderer?.then((instance) => instance.destroy(), () => undefined);
   }
@@ -123,6 +157,7 @@ export class ViewerSession {
 
   private fail(error: unknown, fallback: DicomViewerError['code']): void {
     const viewerError = error instanceof DicomViewerError ? error : new DicomViewerError(fallback, { cause: error });
+    this.setViewport({ status: undefined });
     this.setState({ phase: 'error', progress: undefined, error: viewerError });
     this.events().onError?.(viewerError);
   }
@@ -174,11 +209,14 @@ export class ViewerSession {
     const series = this.findSeries(seriesInstanceUid);
     if (!series) return;
     const op = this.begin();
+    this.setViewport({ status: undefined });
     this.setState({ phase: 'loading', selectedSeriesUid: seriesInstanceUid, error: undefined });
 
+    let renderer: StackRenderer;
     try {
-      const renderer = await this.getRenderer();
+      renderer = await this.getRenderer();
       if (!op.isCurrent()) return;
+      renderer.setTool(this.viewport.tool);
       await renderer.showStack(
         series.instances.map((instance) => ({
           file: instance.file,
@@ -192,6 +230,7 @@ export class ViewerSession {
       return;
     }
     if (!op.isCurrent()) return;
+    this.setViewport({ status: renderer.getViewportStatus() });
     this.setState({ phase: 'displayed' });
     this.events().onSeriesDisplayed?.(series.summary);
   }
@@ -206,7 +245,45 @@ export class ViewerSession {
       return;
     }
     this.releaseDisplayed();
+    this.setViewport({ status: undefined });
     this.setState({ phase: 'ready', selectedSeriesUid: undefined });
+  }
+
+  // ── View controls (no-ops unless a series is displayed) ──────────────────
+
+  /** Selects the tool for the primary mouse button and arrow keys. */
+  setTool(tool: ViewerTool): void {
+    this.setViewport({ tool });
+    this.renderer?.setTool(tool);
+  }
+
+  setImageIndex(index: number): void {
+    this.displayedRenderer()?.setImageIndex(index);
+  }
+
+  scrollBy(delta: number): void {
+    this.displayedRenderer()?.scrollBy(delta);
+  }
+
+  zoomBy(factor: number): void {
+    this.displayedRenderer()?.zoomBy(factor);
+  }
+
+  panBy(dx: number, dy: number): void {
+    this.displayedRenderer()?.panBy(dx, dy);
+  }
+
+  adjustWindowLevel(widthSteps: number, centerSteps: number): void {
+    this.displayedRenderer()?.adjustWindowLevel(widthSteps, centerSteps);
+  }
+
+  /** Restores the initial zoom, pan and window/level of the displayed series. */
+  resetView(): void {
+    this.displayedRenderer()?.resetView();
+  }
+
+  private displayedRenderer(): StackRenderer | undefined {
+    return this.state.phase === 'displayed' ? this.renderer : undefined;
   }
 
   /** Closes the current files and releases their data. Use on logout or patient switch. */
@@ -218,6 +295,7 @@ export class ViewerSession {
     this.begin();
     this.studies = [];
     this.releaseDisplayed();
+    this.setViewport({ status: undefined });
     this.setState({}, true);
   }
 
@@ -233,11 +311,35 @@ export class ViewerSession {
     if (this.rendererPromise) return this.rendererPromise;
     const element = this.element;
     if (!element) return Promise.reject(new DicomViewerError('RENDERER_INIT_FAILED'));
-    const promise = this.options.createRenderer(element, this.options.rendererConfig);
-    this.rendererPromise = promise;
-    promise.catch(() => {
-      if (this.rendererPromise === promise) this.rendererPromise = undefined;
+    const promise = this.options.createRenderer(element, this.options.rendererConfig, {
+      onViewportChange: (status) => {
+        // Ignore a renderer that was replaced, and frames from a stack still loading.
+        if (this.rendererPromise !== promise || this.state.phase !== 'displayed') return;
+        this.setViewport({ status });
+      },
     });
+    this.rendererPromise = promise;
+    promise.then(
+      (renderer) => {
+        if (this.rendererPromise === promise) this.renderer = renderer;
+      },
+      () => {
+        if (this.rendererPromise === promise) this.rendererPromise = undefined;
+      },
+    );
     return promise;
   }
+}
+
+function sameStatus(a: ViewportStatus | undefined, b: ViewportStatus | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.imageIndex === b.imageIndex &&
+    a.imageCount === b.imageCount &&
+    a.windowWidth === b.windowWidth &&
+    a.windowCenter === b.windowCenter &&
+    a.zoom === b.zoom &&
+    a.imageFailed === b.imageFailed
+  );
 }

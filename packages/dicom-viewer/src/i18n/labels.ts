@@ -1,4 +1,5 @@
 import type { DicomViewerErrorCode } from '../core/errors';
+import type { ViewerTool } from '../core/renderer';
 import type { SkippedReason } from '../core/scanFiles';
 
 /**
@@ -29,6 +30,30 @@ export interface DicomViewerLabels {
   skippedReasons: Record<SkippedReason, string>;
   errors: Record<DicomViewerErrorCode, string>;
   formatStudyDate: (dicomDate: string) => string;
+
+  // ── Image viewport (2D) ──
+  /** Accessible name of the group of tool buttons. */
+  toolGroup: string;
+  tools: Record<ViewerTool, string>;
+  zoomIn: string;
+  zoomOut: string;
+  resetView: string;
+  /** Accessible name of the image area. */
+  imageViewport: string;
+  /** Read by screen readers when the image area is focused. */
+  imageViewportHelp: string;
+  sliceControls: string;
+  previousImage: string;
+  nextImage: string;
+  /** Accessible name of the image slider. */
+  imageSlider: string;
+  /** `index` is one-based. */
+  imagePosition: (index: number, count: number) => string;
+  windowLevelValue: (width: number, center: number) => string;
+  /** `zoom` is relative to fit-to-viewport (1 = fit). */
+  zoomValue: (zoom: number) => string;
+  /** Shown over the viewport when one image of a stack cannot be decoded. `index` is one-based. */
+  imageFailed: (index: number, count: number) => string;
 }
 
 const formatDicomDate = (value: string): string =>
@@ -70,6 +95,29 @@ export const defaultLabels: DicomViewerLabels = {
     UNSUPPORTED_IMAGE: 'This image uses an encoding the viewer does not support. Try another series or re-export the study.',
   },
   formatStudyDate: formatDicomDate,
+
+  toolGroup: 'Mouse tool',
+  tools: {
+    windowLevel: 'Window/level',
+    pan: 'Pan',
+    zoom: 'Zoom',
+    scroll: 'Scroll',
+  },
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
+  resetView: 'Reset view',
+  imageViewport: 'Image',
+  imageViewportHelp:
+    'Arrow keys apply the selected tool. Page Up and Page Down change the image, Home and End go to the first and last image, plus and minus zoom, and R resets the view. Hold Shift for larger steps.',
+  sliceControls: 'Image navigation',
+  previousImage: 'Previous image',
+  nextImage: 'Next image',
+  imageSlider: 'Image',
+  imagePosition: (index, count) => `Image ${index} of ${count}`,
+  windowLevelValue: (width, center) => `W ${Math.round(width)} · L ${Math.round(center)}`,
+  zoomValue: (zoom) => `Zoom ${Math.round(zoom * 100)}%`,
+  imageFailed: (index, count) =>
+    `Image ${index} of ${count} could not be displayed. The file may be damaged or use an unsupported encoding. The previous image is still shown.`,
 };
 
 export function resolveLabels(overrides?: Partial<DicomViewerLabels>): DicomViewerLabels {
@@ -79,5 +127,6 @@ export function resolveLabels(overrides?: Partial<DicomViewerLabels>): DicomView
     ...overrides,
     skippedReasons: { ...defaultLabels.skippedReasons, ...overrides.skippedReasons },
     errors: { ...defaultLabels.errors, ...overrides.errors },
+    tools: { ...defaultLabels.tools, ...overrides.tools },
   };
 }

@@ -59,10 +59,52 @@
   cursor: pointer;
 }
 
-.mivo-dv-button:hover {
+.mivo-dv-button:hover:not(:disabled) {
   background: var(--mivo-dv-surface-hover);
 }
 
+.mivo-dv-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.mivo-dv-button[aria-pressed='true'] {
+  border-color: var(--mivo-dv-accent);
+  background: var(--mivo-dv-accent);
+  color: var(--mivo-dv-accent-text);
+}
+
+.mivo-dv-icon-button {
+  min-width: 32px;
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mivo-dv-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mivo-dv-toolbar-group + .mivo-dv-toolbar-group {
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid var(--mivo-dv-border);
+}
+
+.mivo-dv-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mivo-dv-viewport:focus-visible,
+.mivo-dv-slider:focus-visible,
 .mivo-dv-button:focus-visible,
 .mivo-dv-series:focus-visible,
 .mivo-dv-skipped summary:focus-visible {
@@ -151,6 +193,56 @@
   color: var(--mivo-dv-muted);
   font-weight: 400;
   font-size: 12px;
+}
+
+.mivo-dv-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mivo-dv-slicebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--mivo-dv-border);
+  background: var(--mivo-dv-surface);
+}
+
+.mivo-dv-slider {
+  flex: 1 1 auto;
+  min-width: 80px;
+  accent-color: var(--mivo-dv-accent);
+}
+
+.mivo-dv-slice-position {
+  min-width: 7ch;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  color: var(--mivo-dv-muted);
+}
+
+.mivo-dv-banner {
+  position: absolute;
+  inset-inline: 8px;
+  top: 8px;
+  z-index: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--mivo-dv-danger);
+  border-radius: var(--mivo-dv-radius);
+  background: color-mix(in srgb, var(--mivo-dv-bg) 88%, transparent);
+  color: var(--mivo-dv-danger);
+  pointer-events: none;
+}
+
+.mivo-dv-readout {
+  display: inline-flex;
+  gap: 12px;
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .mivo-dv-stage {
@@ -247,4 +339,9 @@
     border-inline-end: 0;
     border-bottom: 1px solid var(--mivo-dv-border);
   }
+}
+
+/* The viewport fills the stage, so draw its focus ring inside. */
+.mivo-dv-viewport:focus-visible {
+  outline-offset: -2px;
 }

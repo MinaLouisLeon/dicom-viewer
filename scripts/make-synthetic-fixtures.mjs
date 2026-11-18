@@ -239,10 +239,15 @@ async function intraoral({ name, transferSyntaxUid, seriesNumber, description })
   });
 }
 
-function ctStackSlice(index, depth, size) {
+function ctStackSlice(
+  index,
+  depth,
+  size,
+  { seriesKey = 'series-ct-stack', instanceKey = 'instance-ct', seriesNumber = 1, description = 'Sphere phantom axial' } = {},
+) {
   const studyUid = uid('study-ct');
-  const seriesUid = uid('series-ct-stack');
-  const sopInstanceUid = uid(`instance-ct-${index}`);
+  const seriesUid = uid(seriesKey);
+  const sopInstanceUid = uid(`${instanceKey}-${index}`);
   const pixels = ctSlice(size, index, depth);
   const zPosition = (index * 2.5).toFixed(2);
   return part10({
@@ -255,11 +260,11 @@ function ctStackSlice(index, depth, size) {
       element([0x0008, 0x0020], 'DA', '20260102'),
       element([0x0008, 0x0060], 'CS', 'CT'),
       element([0x0008, 0x1030], 'LO', 'Synthetic CT phantom'),
-      element([0x0008, 0x103e], 'LO', 'Sphere phantom axial'),
+      element([0x0008, 0x103e], 'LO', description),
       ...commonPatient(),
       element([0x0020, 0x000d], 'UI', studyUid),
       element([0x0020, 0x000e], 'UI', seriesUid),
-      element([0x0020, 0x0011], 'IS', '1'),
+      element([0x0020, 0x0011], 'IS', String(seriesNumber)),
       element([0x0020, 0x0013], 'IS', String(index + 1)),
       element([0x0020, 0x0032], 'DS', ['-64', '-64', zPosition]),
       element([0x0020, 0x0037], 'DS', ['1', '0', '0', '0', '1', '0']),
@@ -308,6 +313,19 @@ async function main() {
   for (let index = 0; index < depth; index += 1) {
     // File names run opposite to slice position so ordering by geometry is exercised.
     write(`stack/ct-${String(depth - index).padStart(3, '0')}.dcm`, ctStackSlice(index, depth, 128));
+  }
+
+  // A second CT series whose fourth slice has its pixel data cut short: a damaged image inside
+  // an otherwise valid stack. The viewer must keep the series open and report that one image.
+  const damagedDepth = 6;
+  for (let index = 0; index < damagedDepth; index += 1) {
+    const slice = ctStackSlice(index, damagedDepth, 128, {
+      seriesKey: 'series-ct-damaged',
+      instanceKey: 'instance-ct-damaged',
+      seriesNumber: 2,
+      description: 'Damaged slice 4 of 6',
+    });
+    write(`damaged-stack/ct-${String(index + 1).padStart(3, '0')}.dcm`, index === 3 ? slice.subarray(0, slice.length - 16_000) : slice);
   }
 
   write('invalid/not-dicom.txt', Buffer.from('This is not a DICOM file.\n'));

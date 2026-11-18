@@ -17,6 +17,8 @@ describe('scanFiles', () => {
     // ct-012.dcm holds the first slice; geometric ordering must put it first.
     const firstSlice = ct?.series[0]?.instances[0];
     expect(paths[firstSlice?.selectionIndex ?? -1]).toMatch(/ct-012\.dcm$/);
+    // The damaged slice still has a valid header, so it stays in its series and fails only at decode time.
+    expect(ct?.series[1]?.summary).toMatchObject({ seriesNumber: 2, instanceCount: 6, imageCount: 6 });
 
     const intraoral = result.studies.find((study) => study.summary.description === 'Synthetic intraoral study');
     expect(intraoral?.summary.series.map((series) => series.seriesNumber)).toEqual([1, 2, 3, 9]);

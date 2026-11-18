@@ -1,6 +1,6 @@
 # @mivo-labs/dicom-viewer — Implementation Plan
 
-**Status:** Plan approved 18 November 2026 · **Implementation:** P01 ready for review · **Plan date:** 17 November 2026
+**Status:** Plan approved 18 November 2026 · **Implementation:** P01 and P02 ready for review · **Plan date:** 17 November 2026
 
 **Organization:** mivo-labs · **npm package:** @mivo-labs/dicom-viewer
 Build and publish a reusable React DICOM viewer with **both 2D and 3D viewing** in its first npm release. The [Dental Clinic SaaS plan](dental-clinic-saas-implementation-plan.md) depends on that tested release. Begin SaaS implementation after publication and clean-install verification. Use a standalone React + Vite demo to develop and test the package first.
@@ -39,7 +39,7 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 |---|---|---|---|
 | P00 · Plan and compatibility baseline | — | In progress — plan approved 2026-11-18; P00-01 and P00-02 open | Plan approval recorded in decision log |
 | P01 · Package foundation and demo | P00 (plan approval) | Ready for review | Branch `feat/p01-package-foundation`; see progress log 2026-11-18 |
-| P02 · 2D viewer | P01 | Not started | — |
+| P02 · 2D viewer | P01 | Ready for review | Branch `feat/2d-viewer`; see progress log 2026-11-18 |
 | P03 · 3D CBCT viewer | P02 | Not started | — |
 | P04 · Compatibility and release candidate | P03 | Not started | — |
 | P05 · npm publication and SaaS handoff | P04 | Not started | — |
@@ -61,9 +61,9 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 
 ### P02 · 2D viewer
 
-- [ ] P02-01 Render a single dental X-ray and an image stack with slice navigation.
-- [ ] P02-02 Implement pan, zoom, window and level, reset, and keyboard-accessible controls.
-- [ ] P02-03 Verify unsupported inputs, corrupted files, cancelled reads, and study switching.
+- [x] P02-01 Render a single dental X-ray and an image stack with slice navigation.
+- [x] P02-02 Implement pan, zoom, window and level, reset, and keyboard-accessible controls.
+- [x] P02-03 Verify unsupported inputs, corrupted files, cancelled reads, and study switching.
 
 **Acceptance:** Approved 2D fixtures display and all required tools work. A corrupt or unsupported image produces an actionable error.
 
@@ -101,7 +101,9 @@ Use **Not started**, **In progress**, **Blocked**, **Ready for review**, and **A
 |---|---|---|---|---|---|
 | 2026-11-18 | P00 | Plan approved by package owner. P00-01 (npm scope access, license) and P00-02 (test matrix, fixtures, limits) remain open. | — | Owner approval in conversation | Close P00-01/P00-02 before P04 |
 | 2026-11-18 | P01-01 – P01-03 | Ready for review. npm workspace with `packages/dicom-viewer` (ESM + declarations + `styles.css` + `/vite` plugin) and `apps/demo` (React + Vite, StrictMode). Built-in file and folder picker with drag and drop, progressive header scan, study and series grouping, geometric stack ordering, lazy-loaded Cornerstone stack renderer, lifecycle with abort/cancel/clear, translatable labels, scoped CSS. Synthetic fixture generator. | 7647b62, PR #1 | `npm run check`: typecheck, 37/37 unit tests, package and demo builds pass. `npm run smoke:consumer`: tarball (25 files, no sources or fixtures) installs into a clean Vite 8 + React 19 app, type-checks with `skipLibCheck: false`, and builds with worker, 5 codecs and CSS emitted. Chrome on Windows 11: demo dev server and clean-consumer production build render Explicit VR LE, JPEG 2000 lossless, JPEG-LS lossless and a 12-slice CT stack (canvas pixel check); truncated file shows IMAGE_LOAD_FAILED; non-DICOM file is skipped with a reason; switching studies discards the stale load (unit-tested); logout `clear()` returns to idle; all resource requests stayed on the app origin; no service worker; localStorage holds only Cornerstone GPU flags and log level. | Owner review of P01. Follow-ups below. |
-| 2026-11-18 | P01 follow-ups | Open. (1) Cornerstone 5.19 default metadata path does not decode `dicomfile:` images; legacy provider used, revisit on upgrade. (2) Vite 8 also resolves Cornerstone's codec URLs itself, so production builds contain each codec twice (~2 MB on disk, only one copy downloaded); decide in P04. (3) Cornerstone chunk is ~3.3 MB minified (vtk.js/xmlbuilder2); measure in P04. (4) `npm audit`: high-severity adm-zip advisories via `dcmjs` (no fix available; Node-only ZIP code, not on the browser path); re-check before release. (5) `onSeriesDisplayed` fires a few hundred ms before the first GPU frame paints; tighten in P02. | — | — | Track in P02 and P04 |
+| 2026-11-18 | P02-01 – P02-03 | Ready for review. Cornerstone tools (window/level, pan, zoom, stack scroll) in one tool group per viewer: selected tool on primary button, fixed right-drag zoom, middle-drag pan, wheel scroll. Toolbar tool selection (`aria-pressed`), zoom in/out, reset. Slice bar for stacks (prev/next, slider with `aria-valuetext`, position). Focusable image (`role="application"`, described key help): arrow keys follow the selected tool; Page Up/Down, Home/End, `+`/`-`, `R`; Shift for larger steps. Status bar readout of DICOM W/L and zoom. Viewport state is a separate store, so drag steps do not fire `onStateChange`. A damaged image inside a stack shows a non-blocking notice and keeps the series open. `onSeriesDisplayed` now waits for the first rendered frame (closes P01 follow-up 5). New public API: `initialTool` prop, handle `setTool()`/`resetView()`, `ViewerTool` and `ViewportStatus` types, new labels. New synthetic fixture `damaged-stack/` (6 slices, slice 4 truncated); existing fixtures byte-identical. Root `npm run check` now builds the package first, so it passes on a fresh checkout. | ed457e8, PR #2 | `npm run check`: typecheck, 52/52 unit tests (15 new), package and demo builds pass. `npm run smoke:consumer` passes. Chrome on Windows 11, demo dev server: 12-slice CT stack — wheel scroll, mouse W/L drag, Pan tool drag, keyboard W/L (2000→2100→2205), level (+110), zoom (144%), End (12/12), R reset to W 2000 · L 400 · 100% keeping image 12; click focuses the image. Damaged stack: slices 1–3, 5–6 display, notice appears only on slice 4 (also on revisit), phase stays `displayed`. Intraoral Explicit LE, JPEG 2000 and JPEG-LS display with no slice bar; invalid sample shows IMAGE_LOAD_FAILED plus 1 skipped file; logout clear returns to idle. No off-origin requests; localStorage holds only Cornerstone GPU flags and log level. | Owner review of P02. Follow-ups below. |
+| 2026-11-18 | P02 follow-ups | Open. (1) Lazy Cornerstone chunk grew from ~3.3 MB to ~3.7 MB minified with `@cornerstonejs/tools`; measure in P04. (2) No touch bindings yet (one-finger tool, pinch zoom); decide whether tablets are in the P00-02 device matrix. (3) Toolbar does not use roving tabindex; every button is a Tab stop. Revisit in the P04 accessibility pass. (4) Window/level presets (for example bone or soft tissue) and invert are not in scope; add if the SaaS needs them. | — | — | Track in P03 and P04 |
+| 2026-11-18 | P01 follow-ups | Open. (1) Cornerstone 5.19 default metadata path does not decode `dicomfile:` images; legacy provider used, revisit on upgrade. (2) Vite 8 also resolves Cornerstone's codec URLs itself, so production builds contain each codec twice (~2 MB on disk, only one copy downloaded); decide in P04. (3) Cornerstone chunk is ~3.3 MB minified (vtk.js/xmlbuilder2); measure in P04. (4) `npm audit`: high-severity adm-zip advisories via `dcmjs` (no fix available; Node-only ZIP code, not on the browser path); re-check before release. (5) ~~`onSeriesDisplayed` fires a few hundred ms before the first GPU frame paints; tighten in P02.~~ Fixed in P02. | — | — | Track in P02 and P04 |
 
 ## Decision log
 

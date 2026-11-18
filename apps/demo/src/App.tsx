@@ -18,6 +18,10 @@ const SAMPLES: Record<string, string[]> = {
     { length: 12 },
     (_, index) => `synthetic/stack/ct-${String(index + 1).padStart(3, '0')}.dcm`,
   ),
+  'CT with damaged slice 4': Array.from(
+    { length: 6 },
+    (_, index) => `synthetic/damaged-stack/ct-${String(index + 1).padStart(3, '0')}.dcm`,
+  ),
   'Invalid files': ['synthetic/invalid/not-dicom.txt', 'synthetic/invalid/truncated-pixel-data.dcm'],
 };
 
