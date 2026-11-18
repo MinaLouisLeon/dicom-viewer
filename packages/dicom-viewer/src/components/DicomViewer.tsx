@@ -17,7 +17,7 @@ import {
 import { DEFAULT_CODEC_BASE_PATH } from '../core/assetPaths';
 import { collectDroppedFiles, sortByPath } from '../core/collectFiles';
 import type { DicomViewerError } from '../core/errors';
-import { createCornerstoneRenderer } from '../core/renderer';
+import { VIEWER_TOOLS, createCornerstoneRenderer, type ViewerTool } from '../core/renderer';
 import type { SeriesSummary, StudySummary } from '../core/studyModel';
 import { ViewerSession, type ViewerSessionEvents, type ViewerState } from '../core/viewerSession';
 import { resolveLabels, type DicomViewerLabels } from '../i18n/labels';
@@ -37,6 +37,12 @@ export interface DicomViewerProps {
   /** Upper bound on decode workers. Defaults to half the logical CPU count. */
   maxWebWorkers?: number;
   /**
+   * Tool bound to the primary mouse button and the arrow keys when the viewer mounts.
+   * Read once; use the handle's `setTool` to change it later.
+   * @default 'windowLevel'
+   */
+  initialTool?: ViewerTool;
+  /**
    * Local files supplied by the host app (for example from its own drop target).
    * Opened whenever a new array is passed. The built-in buttons work without this.
    */
@@ -55,9 +61,25 @@ export interface DicomViewerHandle {
   /** Closes the current files and releases their data. */
   clear(): void;
   getState(): ViewerState;
+  /** Selects the tool for the primary mouse button and the arrow keys. */
+  setTool(tool: ViewerTool): void;
+  /** Restores the initial zoom, pan and window/level of the displayed series. */
+  resetView(): void;
 }
 
 const directoryInputProps = { webkitdirectory: '', directory: '' } as Record<string, string>;
+
+const ZOOM_STEP = 1.2;
+const PAN_STEP_PX = 20;
+/** Multiplier applied to keyboard steps while Shift is held. */
+const LARGE_STEP = 5;
+
+const ARROW_DIRECTIONS: Partial<Record<string, readonly [number, number]>> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+};
 
 export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(function DicomViewer(props, ref) {
   const { className, style, files, codecBasePath = DEFAULT_CODEC_BASE_PATH, maxWebWorkers } = props;
@@ -77,9 +99,11 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
         createRenderer: createCornerstoneRenderer,
         rendererConfig: { codecBasePath, maxWebWorkers },
         getEvents: () => eventsRef.current,
+        initialTool: props.initialTool,
       }),
   );
   const state = useSyncExternalStore(session.subscribe, session.getState, session.getState);
+  const viewport = useSyncExternalStore(session.subscribeViewport, session.getViewportState, session.getViewportState);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -101,6 +125,8 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
       cancel: () => session.cancel(),
       clear: () => session.clear(),
       getState: () => session.getState(),
+      setTool: (tool) => session.setTool(tool),
+      resetView: () => session.resetView(),
     }),
     [session],
   );
@@ -136,6 +162,9 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
   const busy = state.phase === 'scanning' || state.phase === 'loading';
   const hasStudies = state.studies.length > 0;
   const showViewport = state.phase === 'displayed' || state.phase === 'loading';
+  const displayed = state.phase === 'displayed';
+  const status = displayed ? viewport.status : undefined;
+  const imageCount = status?.imageCount ?? 0;
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Escape' && busy) {
@@ -144,27 +173,126 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
     }
   };
 
-  const ids = { status: useId(), studies: useId() };
+  const onViewportKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!displayed || event.altKey || event.ctrlKey || event.metaKey) return;
+    const multiplier = event.shiftKey ? LARGE_STEP : 1;
+    const pageStep = event.shiftKey ? Math.max(1, Math.round(imageCount / 10)) : 1;
+    const direction = ARROW_DIRECTIONS[event.key];
+    if (direction) {
+      const [x, y] = direction;
+      switch (viewport.tool) {
+        case 'windowLevel':
+          // Right/left widens/narrows the window; up/down raises/lowers the level.
+          session.adjustWindowLevel(x * multiplier, (0 - y) * multiplier);
+          break;
+        case 'pan':
+          session.panBy(x * PAN_STEP_PX * multiplier, y * PAN_STEP_PX * multiplier);
+          break;
+        case 'zoom': {
+          const zoomIn = x > 0 || y < 0;
+          session.zoomBy((zoomIn ? ZOOM_STEP : 1 / ZOOM_STEP) ** (event.shiftKey ? 3 : 1));
+          break;
+        }
+        case 'scroll':
+          session.scrollBy((x + y) * pageStep);
+          break;
+      }
+    } else {
+      switch (event.key) {
+        case 'PageUp':
+          session.scrollBy(-pageStep);
+          break;
+        case 'PageDown':
+          session.scrollBy(pageStep);
+          break;
+        case 'Home':
+          session.setImageIndex(0);
+          break;
+        case 'End':
+          session.setImageIndex(imageCount - 1);
+          break;
+        case '+':
+        case '=':
+          session.zoomBy(ZOOM_STEP);
+          break;
+        case '-':
+        case '_':
+          session.zoomBy(1 / ZOOM_STEP);
+          break;
+        case 'r':
+        case 'R':
+          session.resetView();
+          break;
+        default:
+          return;
+      }
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const ids = { status: useId(), studies: useId(), viewportHelp: useId() };
   const rootClass = ['mivo-dv', className].filter(Boolean).join(' ');
 
   return (
     <section className={rootClass} style={style} aria-label={labels.viewerRegion} onKeyDown={onKeyDown}>
       <div className="mivo-dv-toolbar" role="toolbar" aria-label={labels.toolbar}>
-        <button type="button" className="mivo-dv-button" onClick={() => fileInputRef.current?.click()}>
-          {labels.openFiles}
-        </button>
-        <button type="button" className="mivo-dv-button" onClick={() => folderInputRef.current?.click()}>
-          {labels.openFolder}
-        </button>
-        {busy && (
-          <button type="button" className="mivo-dv-button" onClick={() => session.cancel()}>
-            {labels.cancel}
+        <div className="mivo-dv-toolbar-group">
+          <button type="button" className="mivo-dv-button" onClick={() => fileInputRef.current?.click()}>
+            {labels.openFiles}
           </button>
-        )}
-        {(hasStudies || state.phase === 'error') && !busy && (
-          <button type="button" className="mivo-dv-button" onClick={() => session.clear()}>
-            {labels.clear}
+          <button type="button" className="mivo-dv-button" onClick={() => folderInputRef.current?.click()}>
+            {labels.openFolder}
           </button>
+          {busy && (
+            <button type="button" className="mivo-dv-button" onClick={() => session.cancel()}>
+              {labels.cancel}
+            </button>
+          )}
+          {(hasStudies || state.phase === 'error') && !busy && (
+            <button type="button" className="mivo-dv-button" onClick={() => session.clear()}>
+              {labels.clear}
+            </button>
+          )}
+        </div>
+        {hasStudies && (
+          <>
+            <div className="mivo-dv-toolbar-group" role="group" aria-label={labels.toolGroup}>
+              {VIEWER_TOOLS.map((tool) => (
+                <button
+                  key={tool}
+                  type="button"
+                  className="mivo-dv-button"
+                  aria-pressed={viewport.tool === tool}
+                  disabled={!displayed}
+                  onClick={() => session.setTool(tool)}
+                >
+                  {labels.tools[tool]}
+                </button>
+              ))}
+            </div>
+            <div className="mivo-dv-toolbar-group">
+              <button
+                type="button"
+                className="mivo-dv-button"
+                disabled={!displayed}
+                onClick={() => session.zoomBy(ZOOM_STEP)}
+              >
+                {labels.zoomIn}
+              </button>
+              <button
+                type="button"
+                className="mivo-dv-button"
+                disabled={!displayed}
+                onClick={() => session.zoomBy(1 / ZOOM_STEP)}
+              >
+                {labels.zoomOut}
+              </button>
+              <button type="button" className="mivo-dv-button" disabled={!displayed} onClick={() => session.resetView()}>
+                {labels.resetView}
+              </button>
+            </div>
+          </>
         )}
         <input
           ref={fileInputRef}
@@ -236,47 +364,104 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
           </nav>
         )}
 
-        <div
-          className="mivo-dv-stage"
-          data-drag-active={dragActive || undefined}
-          onDragOver={onDragOver}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={(event) => void onDrop(event)}
-        >
+        <div className="mivo-dv-main">
           <div
-            ref={viewportRef}
-            className="mivo-dv-viewport"
-            data-visible={showViewport || undefined}
-            data-testid="mivo-dv-viewport"
-            onContextMenu={(event) => event.preventDefault()}
-          />
+            className="mivo-dv-stage"
+            data-drag-active={dragActive || undefined}
+            onDragOver={onDragOver}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(event) => void onDrop(event)}
+          >
+            <div
+              ref={viewportRef}
+              className="mivo-dv-viewport"
+              data-visible={showViewport || undefined}
+              data-testid="mivo-dv-viewport"
+              role="application"
+              aria-label={labels.imageViewport}
+              aria-describedby={ids.viewportHelp}
+              tabIndex={displayed ? 0 : -1}
+              onKeyDown={onViewportKeyDown}
+              // The rendering library may cancel mousedown, which would otherwise focus the image.
+              onPointerDown={(event) => event.currentTarget.focus({ preventScroll: true })}
+              onContextMenu={(event) => event.preventDefault()}
+            />
+            <span id={ids.viewportHelp} className="mivo-dv-visually-hidden">
+              {labels.imageViewportHelp}
+            </span>
 
-          {state.phase === 'idle' && (
-            <div className="mivo-dv-overlay mivo-dv-dropzone">
-              <p className="mivo-dv-title">{labels.dropZoneTitle}</p>
-              <p>{labels.dropZoneHint}</p>
-              <p className="mivo-dv-muted">{labels.privacyNote}</p>
-            </div>
-          )}
+            {status?.imageFailed && (
+              <div className="mivo-dv-banner" role="alert">
+                {labels.imageFailed(status.imageIndex + 1, status.imageCount)}
+              </div>
+            )}
 
-          {busy && (
-            <div className="mivo-dv-overlay" aria-describedby={ids.status}>
-              {state.phase === 'scanning' && state.progress ? (
-                <progress
-                  className="mivo-dv-progress"
-                  max={Math.max(1, state.progress.total)}
-                  value={state.progress.processed}
-                  aria-label={labels.scanning(state.progress.processed, state.progress.total)}
-                />
-              ) : (
-                <progress className="mivo-dv-progress" aria-label={labels.loadingSeries} />
-              )}
-            </div>
-          )}
+            {state.phase === 'idle' && (
+              <div className="mivo-dv-overlay mivo-dv-dropzone">
+                <p className="mivo-dv-title">{labels.dropZoneTitle}</p>
+                <p>{labels.dropZoneHint}</p>
+                <p className="mivo-dv-muted">{labels.privacyNote}</p>
+              </div>
+            )}
 
-          {state.phase === 'error' && state.error && (
-            <div className="mivo-dv-overlay mivo-dv-error" role="alert">
-              <p>{labels.errors[state.error.code]}</p>
+            {busy && (
+              <div className="mivo-dv-overlay" aria-describedby={ids.status}>
+                {state.phase === 'scanning' && state.progress ? (
+                  <progress
+                    className="mivo-dv-progress"
+                    max={Math.max(1, state.progress.total)}
+                    value={state.progress.processed}
+                    aria-label={labels.scanning(state.progress.processed, state.progress.total)}
+                  />
+                ) : (
+                  <progress className="mivo-dv-progress" aria-label={labels.loadingSeries} />
+                )}
+              </div>
+            )}
+
+            {state.phase === 'error' && state.error && (
+              <div className="mivo-dv-overlay mivo-dv-error" role="alert">
+                <p>{labels.errors[state.error.code]}</p>
+              </div>
+            )}
+          </div>
+
+          {status && imageCount > 1 && (
+            <div className="mivo-dv-slicebar" role="group" aria-label={labels.sliceControls}>
+              <button
+                type="button"
+                className="mivo-dv-button mivo-dv-icon-button"
+                aria-label={labels.previousImage}
+                title={labels.previousImage}
+                disabled={status.imageIndex <= 0}
+                onClick={() => session.scrollBy(-1)}
+              >
+                <span aria-hidden="true">{'‹'}</span>
+              </button>
+              <input
+                type="range"
+                className="mivo-dv-slider"
+                min={1}
+                max={imageCount}
+                step={1}
+                value={status.imageIndex + 1}
+                aria-label={labels.imageSlider}
+                aria-valuetext={labels.imagePosition(status.imageIndex + 1, imageCount)}
+                onChange={(event) => session.setImageIndex(Number(event.currentTarget.value) - 1)}
+              />
+              <button
+                type="button"
+                className="mivo-dv-button mivo-dv-icon-button"
+                aria-label={labels.nextImage}
+                title={labels.nextImage}
+                disabled={status.imageIndex >= imageCount - 1}
+                onClick={() => session.scrollBy(1)}
+              >
+                <span aria-hidden="true">{'›'}</span>
+              </button>
+              <span className="mivo-dv-slice-position" data-testid="mivo-dv-slice-position">
+                {status.imageIndex + 1} / {imageCount}
+              </span>
             </div>
           )}
         </div>
@@ -298,6 +483,15 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
               ))}
             </ul>
           </details>
+        )}
+        {status && (
+          // Not announced: it changes on every drag step.
+          <span className="mivo-dv-readout" aria-live="off" data-testid="mivo-dv-readout">
+            {status.windowWidth !== undefined && status.windowCenter !== undefined && (
+              <span>{labels.windowLevelValue(status.windowWidth, status.windowCenter)}</span>
+            )}
+            <span>{labels.zoomValue(status.zoom)}</span>
+          </span>
         )}
       </div>
     </section>

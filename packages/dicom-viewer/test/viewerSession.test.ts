@@ -137,6 +137,96 @@ describe('ViewerSession', () => {
     expect(events.onSeriesDisplayed).not.toHaveBeenCalled();
   });
 
+  describe('view controls', () => {
+    it('defaults to window/level and applies the tool before the first stack is shown', async () => {
+      const { session, renderer } = setup({ autoFinish: true });
+      expect(session.getViewportState().tool).toBe('windowLevel');
+      await session.openFiles(single());
+      expect(renderer.setTool).toHaveBeenCalledWith('windowLevel');
+    });
+
+    it('keeps the selected tool across studies', async () => {
+      const { session, renderer } = setup({ autoFinish: true });
+      await session.openFiles(single());
+      session.setTool('pan');
+      expect(session.getViewportState().tool).toBe('pan');
+      expect(renderer.setTool).toHaveBeenLastCalledWith('pan');
+      session.clear();
+      await session.openFiles(stack());
+      expect(session.getViewportState().tool).toBe('pan');
+      expect(renderer.setTool).toHaveBeenLastCalledWith('pan');
+    });
+
+    it('forwards view operations only while a series is displayed', async () => {
+      const { session, renderer } = setup();
+      session.zoomBy(2);
+      const pending = session.openFiles(stack());
+      await vi.waitFor(() => expect(session.getState().phase).toBe('loading'));
+      session.scrollBy(1);
+      session.resetView();
+      expect(renderer.zoomBy).not.toHaveBeenCalled();
+      expect(renderer.scrollBy).not.toHaveBeenCalled();
+      expect(renderer.resetView).not.toHaveBeenCalled();
+
+      renderer.finish();
+      await pending;
+      session.setImageIndex(5);
+      session.scrollBy(-1);
+      session.zoomBy(1.2);
+      session.panBy(10, -10);
+      session.adjustWindowLevel(1, -1);
+      session.resetView();
+      expect(renderer.setImageIndex).toHaveBeenCalledWith(5);
+      expect(renderer.scrollBy).toHaveBeenCalledWith(-1);
+      expect(renderer.zoomBy).toHaveBeenCalledWith(1.2);
+      expect(renderer.panBy).toHaveBeenCalledWith(10, -10);
+      expect(renderer.adjustWindowLevel).toHaveBeenCalledWith(1, -1);
+      expect(renderer.resetView).toHaveBeenCalledOnce();
+    });
+
+    it('publishes viewport status without firing onStateChange', async () => {
+      const { session, renderer, events } = setup({ autoFinish: true });
+      const listener = vi.fn();
+      session.subscribeViewport(listener);
+      await session.openFiles(stack());
+      expect(session.getViewportState().status).toMatchObject({ imageIndex: 0, imageCount: 12, zoom: 1 });
+
+      vi.mocked(events.onStateChange).mockClear();
+      listener.mockClear();
+      renderer.emit({ imageIndex: 3, zoom: 2 });
+      expect(session.getViewportState().status).toMatchObject({ imageIndex: 3, zoom: 2 });
+      expect(listener).toHaveBeenCalledOnce();
+      expect(events.onStateChange).not.toHaveBeenCalled();
+
+      // Identical status does not notify again.
+      renderer.emit({});
+      expect(listener).toHaveBeenCalledOnce();
+    });
+
+    it('clears viewport status when switching series, failing or closing', async () => {
+      const { session, renderer } = setup();
+      const pending = session.openFiles(stack());
+      await vi.waitFor(() => expect(renderer.shown).toHaveLength(1));
+      renderer.finish();
+      await pending;
+      expect(session.getViewportState().status).toBeDefined();
+
+      const uid = session.getState().selectedSeriesUid!;
+      const reload = session.selectSeries(uid);
+      expect(session.getViewportState().status).toBeUndefined();
+      // Frames from the stack still loading are ignored.
+      renderer.emit({ imageIndex: 2 });
+      expect(session.getViewportState().status).toBeUndefined();
+      await vi.waitFor(() => expect(renderer.shown).toHaveLength(2));
+      renderer.failWith(new DicomViewerError('IMAGE_LOAD_FAILED'));
+      await reload;
+      expect(session.getViewportState().status).toBeUndefined();
+
+      session.clear();
+      expect(session.getViewportState()).toEqual({ tool: 'windowLevel', status: undefined });
+    });
+  });
+
   it('never puts file names or DICOM values in error messages', async () => {
     const { session, events } = setup();
     await session.openFiles([fixtureFile('invalid/not-dicom.txt')]);

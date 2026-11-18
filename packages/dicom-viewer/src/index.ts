@@ -14,3 +14,4 @@ export { DEFAULT_CODEC_BASE_PATH } from './core/assetPaths';
 export type { SeriesSummary, StudySummary } from './core/studyModel';
 export type { SkippedFile, SkippedReason } from './core/scanFiles';
 export type { ViewerPhase, ViewerProgress, ViewerState } from './core/viewerSession';
+export type { ViewerTool, ViewportStatus } from './core/renderer';

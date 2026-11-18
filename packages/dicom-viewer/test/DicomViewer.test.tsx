@@ -9,7 +9,8 @@ import { fixtureFile, fixturePaths } from './fixtures';
 
 const fake = vi.hoisted(() => ({ current: undefined as ReturnType<typeof createFakeRenderer> | undefined }));
 
-vi.mock('../src/core/renderer', () => ({
+vi.mock(import('../src/core/renderer'), async (importOriginal) => ({
+  ...(await importOriginal()),
   createCornerstoneRenderer: (...args: Parameters<CreateRenderer>) => fake.current!.createRenderer(...args),
 }));
 
@@ -115,6 +116,141 @@ describe('<DicomViewer />', () => {
     expect(screen.getByRole('button', { name: 'Ouvrir des fichiers' })).toBeInTheDocument();
     await user.upload(screen.getByTestId('mivo-dv-file-input'), [fixtureFile('invalid/not-dicom.txt')]);
     expect(await screen.findByRole('alert')).toHaveTextContent('Aucune image DICOM.');
+  });
+
+  describe('2D tools', () => {
+    async function openStack() {
+      const ref = createRef<Handle>();
+      const user = userEvent.setup();
+      render(<DicomViewer ref={ref} files={fixturePaths('stack').map(fixtureFile)} />);
+      await waitFor(() => expect(ref.current?.getState().phase).toBe('displayed'));
+      return { ref, user, renderer: fake.current!.renderer };
+    }
+
+    it('shows tool buttons with the selected tool pressed', async () => {
+      const { user, renderer } = await openStack();
+      const group = screen.getByRole('group', { name: defaultLabels.toolGroup });
+      const wl = within(group).getByRole('button', { name: 'Window/level' });
+      const pan = within(group).getByRole('button', { name: 'Pan' });
+      expect(wl).toHaveAttribute('aria-pressed', 'true');
+      await user.click(pan);
+      expect(pan).toHaveAttribute('aria-pressed', 'true');
+      expect(wl).toHaveAttribute('aria-pressed', 'false');
+      expect(renderer.setTool).toHaveBeenLastCalledWith('pan');
+    });
+
+    it('disables view controls while a series is loading', async () => {
+      fake.current = createFakeRenderer();
+      const user = userEvent.setup();
+      render(<DicomViewer />);
+      await user.upload(screen.getByTestId('mivo-dv-file-input'), fixturePaths('stack').map(fixtureFile));
+      await screen.findByRole('button', { name: 'Cancel' });
+      expect(screen.getByRole('button', { name: 'Zoom in' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Pan' })).toBeDisabled();
+      expect(screen.getByTestId('mivo-dv-viewport')).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('zooms and resets from the toolbar', async () => {
+      const { user, renderer, ref } = await openStack();
+      await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+      await user.click(screen.getByRole('button', { name: 'Zoom out' }));
+      await user.click(screen.getByRole('button', { name: 'Reset view' }));
+      expect(renderer.zoomBy).toHaveBeenNthCalledWith(1, 1.2);
+      expect(renderer.zoomBy).toHaveBeenNthCalledWith(2, 1 / 1.2);
+      expect(renderer.resetView).toHaveBeenCalledOnce();
+      act(() => ref.current?.resetView());
+      expect(renderer.resetView).toHaveBeenCalledTimes(2);
+    });
+
+    it('navigates a stack with the slice controls', async () => {
+      const { user, renderer } = await openStack();
+      const nav = screen.getByRole('group', { name: defaultLabels.sliceControls });
+      expect(screen.getByTestId('mivo-dv-slice-position')).toHaveTextContent('1 / 12');
+      expect(within(nav).getByRole('button', { name: 'Previous image' })).toBeDisabled();
+      const slider = within(nav).getByRole('slider', { name: 'Image' });
+      expect(slider).toHaveAttribute('aria-valuetext', 'Image 1 of 12');
+
+      await user.click(within(nav).getByRole('button', { name: 'Next image' }));
+      expect(renderer.scrollBy).toHaveBeenCalledWith(1);
+
+      act(() => renderer.emit({ imageIndex: 11 }));
+      expect(screen.getByTestId('mivo-dv-slice-position')).toHaveTextContent('12 / 12');
+      expect(slider).toHaveAttribute('aria-valuetext', 'Image 12 of 12');
+      expect(within(nav).getByRole('button', { name: 'Next image' })).toBeDisabled();
+    });
+
+    it('has no slice controls for a single image', async () => {
+      const ref = createRef<Handle>();
+      render(<DicomViewer ref={ref} files={fixturePaths('single').map(fixtureFile)} />);
+      await waitFor(() => expect(ref.current?.getState().phase).toBe('displayed'));
+      expect(screen.queryByRole('group', { name: defaultLabels.sliceControls })).not.toBeInTheDocument();
+    });
+
+    it('maps arrow keys to the selected tool', async () => {
+      const { user, renderer, ref } = await openStack();
+      const image = screen.getByRole('application', { name: defaultLabels.imageViewport });
+      expect(image).toHaveAccessibleDescription(defaultLabels.imageViewportHelp);
+      image.focus();
+
+      await user.keyboard('{ArrowRight}{ArrowUp}{Shift>}{ArrowDown}{/Shift}');
+      expect(renderer.adjustWindowLevel.mock.calls).toEqual([
+        [1, 0],
+        [0, 1],
+        [0, -5],
+      ]);
+
+      act(() => ref.current?.setTool('pan'));
+      await user.keyboard('{ArrowLeft}{Shift>}{ArrowDown}{/Shift}');
+      expect(renderer.panBy.mock.calls).toEqual([
+        [-20, 0],
+        [0, 100],
+      ]);
+
+      act(() => ref.current?.setTool('zoom'));
+      await user.keyboard('{ArrowUp}{ArrowDown}');
+      expect(renderer.zoomBy.mock.calls).toEqual([[1.2], [1 / 1.2]]);
+
+      act(() => ref.current?.setTool('scroll'));
+      await user.keyboard('{ArrowDown}{ArrowLeft}');
+      expect(renderer.scrollBy.mock.calls).toEqual([[1], [-1]]);
+    });
+
+    it('supports tool-independent keyboard shortcuts', async () => {
+      const { user, renderer } = await openStack();
+      screen.getByRole('application').focus();
+      await user.keyboard('{PageDown}{PageUp}{Shift>}{PageDown}{/Shift}{End}{Home}+-r');
+      expect(renderer.scrollBy.mock.calls).toEqual([[1], [-1], [1]]);
+      expect(renderer.setImageIndex.mock.calls).toEqual([[11], [0]]);
+      expect(renderer.zoomBy.mock.calls).toEqual([[1.2], [1 / 1.2]]);
+      expect(renderer.resetView).toHaveBeenCalledOnce();
+    });
+
+    it('shows window/level and zoom in the status bar', async () => {
+      const { renderer } = await openStack();
+      const readout = screen.getByTestId('mivo-dv-readout');
+      expect(readout).toHaveTextContent('W 400 · L 40');
+      expect(readout).toHaveTextContent('Zoom 100%');
+      act(() => renderer.emit({ windowWidth: 1500.4, windowCenter: -600.6, zoom: 2.5 }));
+      expect(readout).toHaveTextContent('W 1500 · L -601');
+      expect(readout).toHaveTextContent('Zoom 250%');
+    });
+
+    it('reports an image in the stack that cannot be decoded without leaving the series', async () => {
+      const { renderer, ref } = await openStack();
+      act(() => renderer.emit({ imageIndex: 4, imageFailed: true }));
+      expect(screen.getByRole('alert')).toHaveTextContent(defaultLabels.imageFailed(5, 12));
+      expect(ref.current?.getState().phase).toBe('displayed');
+      act(() => renderer.emit({ imageIndex: 5, imageFailed: false }));
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('starts with the tool given by initialTool', async () => {
+      const ref = createRef<Handle>();
+      render(<DicomViewer ref={ref} initialTool="scroll" files={fixturePaths('stack').map(fixtureFile)} />);
+      await waitFor(() => expect(ref.current?.getState().phase).toBe('displayed'));
+      expect(screen.getByRole('button', { name: 'Scroll' })).toHaveAttribute('aria-pressed', 'true');
+      expect(fake.current!.renderer.setTool).toHaveBeenCalledWith('scroll');
+    });
   });
 
   it('releases renderer resources on unmount', async () => {

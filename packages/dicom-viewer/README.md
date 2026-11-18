@@ -58,15 +58,31 @@ If your app uses a non-root `base`, pass `codecBasePath={`${base}mivo-dicom-view
 | `files` | `readonly Blob[]` | Local files from the host, for example from its own drop target. The viewer opens them whenever a new array is passed. |
 | `codecBasePath` | `string` | Where codec files are served. Defaults to `/mivo-dicom-viewer/codecs/`. Applies to the whole page, and the first viewer's value wins. |
 | `maxWebWorkers` | `number` | Maximum number of decode workers. Defaults to half the logical CPUs. |
+| `initialTool` | `ViewerTool` | Tool for the primary mouse button and arrow keys on mount: `'windowLevel'` (default), `'pan'`, `'zoom'` or `'scroll'`. |
 | `onStateChange` | `(state: ViewerState) => void` | Fires on every lifecycle change. |
 | `onStudiesLoaded` | `(studies: StudySummary[]) => void` | Fires after headers are read and grouped. |
-| `onSeriesDisplayed` | `(series: SeriesSummary) => void` | Fires when the first image of a series is shown. |
+| `onSeriesDisplayed` | `(series: SeriesSummary) => void` | Fires once the first image of a series has been drawn. |
 | `onError` | `(error: DicomViewerError) => void` | `error.code` is one of `NO_DICOM_FILES`, `FILE_READ_FAILED`, `RENDERER_INIT_FAILED`, `IMAGE_LOAD_FAILED`, `UNSUPPORTED_IMAGE`. |
 | `className`, `style` | | Applied to the root element. |
 
 ### `DicomViewerHandle` (ref)
 
-`openFiles(files)`, `selectSeries(seriesInstanceUid)`, `cancel()`, `clear()`, `getState()`.
+`openFiles(files)`, `selectSeries(seriesInstanceUid)`, `cancel()`, `clear()`, `getState()`, `setTool(tool)`, `resetView()`.
+
+### 2D viewing controls
+
+| Input | Action |
+|---|---|
+| Primary button drag | Selected tool: window/level, pan, zoom or scroll |
+| Right button drag | Zoom |
+| Middle button drag | Pan |
+| Mouse wheel | Next or previous image |
+| Toolbar | Select tool, zoom in or out, reset view |
+| Slice bar (stacks only) | Previous and next buttons, slider, position |
+
+When the image is focused (Tab or click), the keyboard works as follows. Arrow keys apply the selected tool. With window/level, Left and Right narrow or widen the window, and Up and Down raise or lower the level, in steps of 5% of the current width. With pan, the arrows move the image. With zoom, Up and Right zoom in. With scroll, the arrows change the image. Page Up and Page Down change the image, Home and End go to the first and last image, `+` and `-` zoom, and `R` resets zoom, pan and window/level. Shift makes each step larger. The image has an accessible description of these keys (`labels.imageViewportHelp`).
+
+The status bar shows the DICOM window width and center and the zoom relative to fit. If one image in a stack cannot be decoded, the series stays open and a notice names that image (`labels.imageFailed`).
 
 ### Lifecycle
 
@@ -79,7 +95,7 @@ Every selector is scoped under `.mivo-dv`. To theme the viewer, override the `--
 ## Inputs (current)
 
 - DICOM Part 10 files with the `DICM` preamble. The user can select files individually or as a folder, and can drop files or folders.
-- Verified with synthetic fixtures: Explicit VR Little Endian, JPEG 2000 lossless, and JPEG-LS lossless. Single-frame images and ordered stacks.
+- Verified with synthetic fixtures: Explicit VR Little Endian, JPEG 2000 lossless, and JPEG-LS lossless. Single-frame images and ordered stacks, including a stack with one damaged slice.
 - Not supported: Deflated Explicit VR Little Endian, files without pixel data (DICOMDIR, SR), and files without Study or Series Instance UIDs. These are listed as skipped files with a reason.
 
 The full compatibility matrix is defined in P00-02 and verified in P04.
