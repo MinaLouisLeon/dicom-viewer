@@ -1,8 +1,8 @@
-# @mivo-labs/dicom-viewer — Implementation Plan
+# @mihawksolutions/dicom-viewer — Implementation Plan
 
 **Status:** Plan approved 18 November 2026 · **Implementation:** P01, P02 and P03 ready for review (P03-04 resource limits wait on P00-02) · **Plan date:** 17 November 2026
 
-**Organization:** mivo-labs · **npm package:** @mivo-labs/dicom-viewer
+**npm organization:** mihawksolutions · **npm package:** @mihawksolutions/dicom-viewer
 Build and publish a reusable React DICOM viewer with **both 2D and 3D viewing** in its first npm release. The [Dental Clinic SaaS plan](dental-clinic-saas-implementation-plan.md) depends on that tested release. Begin SaaS implementation after publication and clean-install verification. Use a standalone React + Vite demo to develop and test the package first.
 
 ## First release scope
@@ -41,7 +41,7 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 | P01 · Package foundation and demo | P00 (plan approval) | Ready for review | Branch `feat/p01-package-foundation`; see progress log 2026-11-18 |
 | P02 · 2D viewer | P01 | Ready for review | Branch `feat/2d-viewer`; see progress log 2026-11-18 |
 | P03 · 3D CBCT viewer | P02 | Ready for review — P03-01 to P03-03 done; P03-04 orientation and ordering verified, comparison with acceptance limits waits on P00-02 | Branch `feat/3D-CBCT-viewer-q`; see progress log 2026-11-18 |
-| P04 · Compatibility and release candidate | P03 | Not started | — |
+| P04 · Compatibility and release candidate | P03 | In progress | Branch `feat/p04-compatibility-release-candidate`; synthetic packed-consumer and lifecycle evidence below |
 | P05 · npm publication and SaaS handoff | P04 | Not started | — |
 
 ### P00 · Plan and compatibility baseline
@@ -83,12 +83,16 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 - [ ] P04-04 Benchmark representative inputs up to 1 GB, including both a large file and multi-file series. Capture resource use, cancellation responsiveness, repeated open/close behavior, and network evidence. Record supported limits and resolve release-blocking crashes.
 - [ ] P04-03 Write quick start, API and compatibility documentation, sample integrations, known limitations, and a changelog. Inspect the tarball for credentials and patient data.
 
+**2026-11-18 initial evidence.** A clean React + Vite production build installed the npm tarball and passed declaration, CSS, decode worker, WASM and lazy-chunk checks under `/dicom-consumer/`. Headless Chrome 157 on Windows with SwiftShader displayed the synthetic JPEG 2000 and JPEG-LS images and both the classic and enhanced CBCT fixtures. Host reset returned to idle and hid the images after each display. Cancelling a deliberately delayed header scan returned to idle. Observed requests were local GETs, with no console errors. Local storage contained only Cornerstone GPU capability and log-level keys. Session storage, IndexedDB, Cache Storage and service worker registrations were empty.
+
+The package quick start, logout integration, compatibility notes and changelog are drafted. The smoke test checked all tarball paths against the expected package layout. The release content review remains open. A regression test with Cornerstone's real dataset cache confirms that a 3D dataset read finishing after release no longer leaves a cached dataset. Pending 2D decodes, the approved Windows matrix, real CBCT fixtures and the 1 GB benchmark remain open.
+
 **Acceptance:** The complete packaged UI and both modes pass the approved Windows test matrix from the tarball. The documented large-study benchmark and local-only network checks pass. Document the results and resolve release-blocking issues.
 
 ### P05 · npm publication and SaaS handoff
 
 - [ ] P05-01 Confirm npm scope access and obtain package-owner approval for the tested release candidate and publication visibility.
-- [ ] P05-02 Publish @mivo-labs/dicom-viewer to npm and record the version and release evidence.
+- [ ] P05-02 Publish @mihawksolutions/dicom-viewer to npm and record the version and release evidence.
 - [ ] P05-03 Install that exact version from npm in a clean React + Vite project and smoke-test both modes. Record the version and results in SaaS task M00-03 before starting SaaS implementation.
 
 **Acceptance:** The published version is installable and both viewer modes pass the clean-install smoke test.
@@ -114,7 +118,7 @@ Use **Not started**, **In progress**, **Blocked**, **Ready for review**, and **A
 | 2026-11-17 | First release provides the full React UI with 2D and 3D viewing of locally selected DICOM files. Validate studies up to 1 GB and document the supported hardware envelope. Publish and clean-install-test before SaaS implementation. |
 | 2026-11-18 | Plan approved. P01 may start before P00-01/P00-02 close; both must close before the P04 release candidate. |
 | 2026-11-18 | Toolchain: npm workspaces, Node 22, Vite 8.3.8, React 19.3.1 (peer range `>=18.2 <20`), TypeScript 6.0.3 (TypeScript 7 not used yet because its compiler API is not needed and tooling support is unverified), Vitest 5.1. Cornerstone3D packages pinned to exactly 5.19.4. |
-| 2026-11-18 | Integration: consumers add the `mivoDicomViewer()` Vite plugin from `@mivo-labs/dicom-viewer/vite`, which serves the codecs, configures the worker build, and aliases `events` to a browser polyfill. Codec path is a prop (`codecBasePath`). |
+| 2026-11-18 | Integration: consumers add the `mivoDicomViewer()` Vite plugin from `@mihawksolutions/dicom-viewer/vite`, which serves the codecs, configures the worker build, and aliases `events` to a browser polyfill. Codec path is a prop (`codecBasePath`). |
 | 2026-11-18 | Package stays `private: true` and `UNLICENSED` until P00-01 records the license and P05 approves publication, so it cannot be published by accident. |
 | 2026-11-18 | 3D scope: orthogonal cross-sections only. Crosshairs translate but never rotate, and slab thickness is off; oblique reformatting is out of scope for the first release. A series opens in 3D only if header geometry forms a regular volume; anything else opens in 2D with the reason. A slice that fails to decode fails the 3D load instead of showing a volume with holes. |
 | 2026-11-18 | Layout is a sticky preference: the 2D/3D choice applies to every later series that supports it, and series that cannot form a volume fall back to 2D. Each layout keeps its own tool (3D defaults to Crosshairs). |

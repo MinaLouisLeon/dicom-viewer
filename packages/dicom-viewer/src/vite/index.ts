@@ -1,5 +1,5 @@
 /**
- * Vite integration for @mivo-labs/dicom-viewer.
+ * Vite integration for @mihawksolutions/dicom-viewer.
  *
  * Cornerstone's DICOM image loader decodes images in module web workers that load
  * WebAssembly codecs. This plugin:
@@ -54,7 +54,7 @@ const CJS_WORKER_DEPS = [
   '@cornerstonejs/codec-openjph/wasmjs',
 ];
 
-const PACKAGE_NAME = '@mivo-labs/dicom-viewer';
+const PACKAGE_NAME = '@mihawksolutions/dicom-viewer';
 const LOADER_NAME = '@cornerstonejs/dicom-image-loader';
 
 function createCodecResolver(): (specifier: string) => string {

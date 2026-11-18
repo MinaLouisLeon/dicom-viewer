@@ -1,5 +1,5 @@
 {
-  "name": "@mivo-labs/dicom-viewer-demo",
+  "name": "@mihawksolutions/dicom-viewer-demo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@mivo-labs/dicom-viewer": "0.0.0",
+    "@mihawksolutions/dicom-viewer": "0.0.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

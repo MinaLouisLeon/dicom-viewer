@@ -1,4 +1,4 @@
-import { mivoDicomViewer } from '@mivo-labs/dicom-viewer/vite';
+import { mivoDicomViewer } from '@mihawksolutions/dicom-viewer/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 

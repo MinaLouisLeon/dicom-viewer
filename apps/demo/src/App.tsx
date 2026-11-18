@@ -4,7 +4,7 @@ import {
   type DicomViewerHandle,
   type DicomViewerLabels,
   type ViewerState,
-} from '@mivo-labs/dicom-viewer';
+} from '@mihawksolutions/dicom-viewer';
 import { useCallback, useRef, useState } from 'react';
 
 /** Synthetic sample sets served from ../../fixtures (no patient data). */
@@ -90,7 +90,7 @@ export function App() {
     <div className="demo">
       <header className="demo-header">
         <div>
-          <h1>@mivo-labs/dicom-viewer</h1>
+          <h1>@mihawksolutions/dicom-viewer</h1>
           <p>Development demo · local files only · phase: <code data-testid="phase">{phase}</code></p>
         </div>
         <div className="demo-actions">

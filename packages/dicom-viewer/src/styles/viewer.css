@@ -1,5 +1,5 @@
 /*
- * @mivo-labs/dicom-viewer styles.
+ * @mihawksolutions/dicom-viewer styles.
  * Every selector is scoped under .mivo-dv; nothing here styles the host page.
  * Theme by overriding the --mivo-dv-* custom properties on .mivo-dv or an ancestor.
  */

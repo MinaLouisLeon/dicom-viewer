@@ -124,6 +124,10 @@ export class FileRegistry {
   async loadDataset(file: Blob): Promise<void> {
     const entry = this.register(file);
     await wadouri.dataSetCacheManager.load(entry.datasetKey, wadouri.loadFileRequest, entry.baseImageId);
+    if (this.files.get(file) !== entry) {
+      // A FileReader already in flight can populate the cache after release().
+      this.unloadDataset(entry.datasetKey);
+    }
   }
 
   /**
@@ -135,13 +139,17 @@ export class FileRegistry {
    * registration), so the dataset is unloaded until it is gone.
    */
   release(): void {
-    const { dataSetCacheManager, fileManager } = wadouri;
     for (const entry of this.files.values()) {
-      for (let guard = 0; dataSetCacheManager.isLoaded(entry.datasetKey) && guard < 100_000; guard += 1) {
-        dataSetCacheManager.unload(entry.datasetKey);
-      }
-      fileManager.remove(Number.parseInt(entry.datasetKey, 10));
+      this.unloadDataset(entry.datasetKey);
+      wadouri.fileManager.remove(Number.parseInt(entry.datasetKey, 10));
     }
     this.files.clear();
+  }
+
+  private unloadDataset(key: string): void {
+    const { dataSetCacheManager } = wadouri;
+    for (let guard = 0; dataSetCacheManager.isLoaded(key) && guard < 100_000; guard += 1) {
+      dataSetCacheManager.unload(key);
+    }
   }
 }

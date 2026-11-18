@@ -1,5 +1,5 @@
 {
-  "name": "@mivo-labs/dicom-viewer",
+  "name": "@mihawksolutions/dicom-viewer",
   "version": "0.0.0",
   "private": true,
   "license": "UNLICENSED",
@@ -10,7 +10,8 @@
   ],
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",

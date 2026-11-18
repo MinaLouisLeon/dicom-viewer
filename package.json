@@ -1,5 +1,5 @@
 {
-  "name": "mivo-labs-dicom-viewer-workspace",
+  "name": "mihawksolutions-dicom-viewer-workspace",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -10,12 +10,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "npm run build -w @mivo-labs/dicom-viewer && npm run build -w @mivo-labs/dicom-viewer-demo",
-    "build:package": "npm run build -w @mivo-labs/dicom-viewer",
-    "dev": "npm run build:package && npm run dev -w @mivo-labs/dicom-viewer-demo",
+    "build": "npm run build -w @mihawksolutions/dicom-viewer && npm run build -w @mihawksolutions/dicom-viewer-demo",
+    "build:package": "npm run build -w @mihawksolutions/dicom-viewer",
+    "dev": "npm run build:package && npm run dev -w @mihawksolutions/dicom-viewer-demo",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test -w @mivo-labs/dicom-viewer",
-    "check": "npm run build:package && npm run typecheck && npm run test && npm run build -w @mivo-labs/dicom-viewer-demo",
+    "test": "npm run test -w @mihawksolutions/dicom-viewer",
+    "check": "npm run build:package && npm run typecheck && npm run test && npm run build -w @mihawksolutions/dicom-viewer-demo",
     "fixtures": "node scripts/make-synthetic-fixtures.mjs",
     "smoke:consumer": "node scripts/consumer-smoke.mjs"
   }
