@@ -1,6 +1,6 @@
 # @mivo-labs/dicom-viewer — Implementation Plan
 
-**Status:** Awaiting plan approval · **Implementation:** Not started · **Plan date:** 17 November 2026
+**Status:** Plan approved 18 November 2026 · **Implementation:** P01 ready for review · **Plan date:** 17 November 2026
 
 **Organization:** mivo-labs · **npm package:** @mivo-labs/dicom-viewer
 Build and publish a reusable React DICOM viewer with **both 2D and 3D viewing** in its first npm release. The [Dental Clinic SaaS plan](dental-clinic-saas-implementation-plan.md) depends on that tested release. Begin SaaS implementation after publication and clean-install verification. Use a standalone React + Vite demo to develop and test the package first.
@@ -37,8 +37,8 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 
 | Milestone | Depends on | Status | Evidence / review |
 |---|---|---|---|
-| P00 · Plan and compatibility baseline | — | Awaiting approval | — |
-| P01 · Package foundation and demo | P00 | Not started | — |
+| P00 · Plan and compatibility baseline | — | In progress — plan approved 2026-11-18; P00-01 and P00-02 open | Plan approval recorded in decision log |
+| P01 · Package foundation and demo | P00 (plan approval) | Ready for review | Branch `feat/p01-package-foundation`; see progress log 2026-11-18 |
 | P02 · 2D viewer | P01 | Not started | — |
 | P03 · 3D CBCT viewer | P02 | Not started | — |
 | P04 · Compatibility and release candidate | P03 | Not started | — |
@@ -53,9 +53,9 @@ The initial scope excludes scanner and PACS integration, segmentation, implant p
 
 ### P01 · Package foundation and demo
 
-- [ ] P01-01 Create the TypeScript package, export map, build, checking and test commands, and standalone React + Vite demo.
-- [ ] P01-02 Prove Cornerstone initialization, worker and codec loading, and loading from local files through the packaged selection UI.
-- [ ] P01-03 Define component lifecycle and error states. Confirm switching studies aborts stale loads.
+- [x] P01-01 Create the TypeScript package, export map, build, checking and test commands, and standalone React + Vite demo.
+- [x] P01-02 Prove Cornerstone initialization, worker and codec loading, and loading from local files through the packaged selection UI.
+- [x] P01-03 Define component lifecycle and error states. Confirm switching studies aborts stale loads.
 
 **Acceptance:** A built package works in a clean consumer app on Windows. The demo exercises the same public API intended for the SaaS.
 
@@ -99,10 +99,16 @@ Use **Not started**, **In progress**, **Blocked**, **Ready for review**, and **A
 
 | Date | Milestone / task IDs | Status and change | Commit / PR | Verification evidence | Blocker / next step |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| 2026-11-18 | P00 | Plan approved by package owner. P00-01 (npm scope access, license) and P00-02 (test matrix, fixtures, limits) remain open. | — | Owner approval in conversation | Close P00-01/P00-02 before P04 |
+| 2026-11-18 | P01-01 – P01-03 | Ready for review. npm workspace with `packages/dicom-viewer` (ESM + declarations + `styles.css` + `/vite` plugin) and `apps/demo` (React + Vite, StrictMode). Built-in file and folder picker with drag and drop, progressive header scan, study and series grouping, geometric stack ordering, lazy-loaded Cornerstone stack renderer, lifecycle with abort/cancel/clear, translatable labels, scoped CSS. Synthetic fixture generator. | 7647b62, PR #1 | `npm run check`: typecheck, 37/37 unit tests, package and demo builds pass. `npm run smoke:consumer`: tarball (25 files, no sources or fixtures) installs into a clean Vite 8 + React 19 app, type-checks with `skipLibCheck: false`, and builds with worker, 5 codecs and CSS emitted. Chrome on Windows 11: demo dev server and clean-consumer production build render Explicit VR LE, JPEG 2000 lossless, JPEG-LS lossless and a 12-slice CT stack (canvas pixel check); truncated file shows IMAGE_LOAD_FAILED; non-DICOM file is skipped with a reason; switching studies discards the stale load (unit-tested); logout `clear()` returns to idle; all resource requests stayed on the app origin; no service worker; localStorage holds only Cornerstone GPU flags and log level. | Owner review of P01. Follow-ups below. |
+| 2026-11-18 | P01 follow-ups | Open. (1) Cornerstone 5.19 default metadata path does not decode `dicomfile:` images; legacy provider used, revisit on upgrade. (2) Vite 8 also resolves Cornerstone's codec URLs itself, so production builds contain each codec twice (~2 MB on disk, only one copy downloaded); decide in P04. (3) Cornerstone chunk is ~3.3 MB minified (vtk.js/xmlbuilder2); measure in P04. (4) `npm audit`: high-severity adm-zip advisories via `dcmjs` (no fix available; Node-only ZIP code, not on the browser path); re-check before release. (5) `onSeriesDisplayed` fires a few hundred ms before the first GPU frame paints; tighten in P02. | — | — | Track in P02 and P04 |
 
 ## Decision log
 
 | Date | Decision |
 |---|---|
 | 2026-11-17 | First release provides the full React UI with 2D and 3D viewing of locally selected DICOM files. Validate studies up to 1 GB and document the supported hardware envelope. Publish and clean-install-test before SaaS implementation. |
+| 2026-11-18 | Plan approved. P01 may start before P00-01/P00-02 close; both must close before the P04 release candidate. |
+| 2026-11-18 | Toolchain: npm workspaces, Node 22, Vite 8.3.8, React 19.3.1 (peer range `>=18.2 <20`), TypeScript 6.0.3 (TypeScript 7 not used yet because its compiler API is not needed and tooling support is unverified), Vitest 5.1. Cornerstone3D packages pinned to exactly 5.19.4. |
+| 2026-11-18 | Integration: consumers add the `mivoDicomViewer()` Vite plugin from `@mivo-labs/dicom-viewer/vite`, which serves the codecs, configures the worker build, and aliases `events` to a browser polyfill. Codec path is a prop (`codecBasePath`). |
+| 2026-11-18 | Package stays `private: true` and `UNLICENSED` until P00-01 records the license and P05 approves publication, so it cannot be published by accident. |

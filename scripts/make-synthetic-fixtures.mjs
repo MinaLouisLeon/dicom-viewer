@@ -1,0 +1,321 @@
+#!/usr/bin/env node
+/**
+ * Generates synthetic DICOM fixtures. They contain computed test patterns only and
+ * no data from any person. Re-running produces byte-identical files.
+ *
+ *   node scripts/make-synthetic-fixtures.mjs
+ */
+import { createHash } from 'node:crypto';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const outDir = path.join(root, 'fixtures', 'synthetic');
+const require = createRequire(path.join(root, 'packages', 'dicom-viewer', 'package.json'));
+const loaderRequire = createRequire(require.resolve('@cornerstonejs/dicom-image-loader'));
+
+const TS = {
+  explicitLE: '1.2.840.10008.1.2.1',
+  jpeg2000Lossless: '1.2.840.10008.1.2.4.90',
+  jpegLsLossless: '1.2.840.10008.1.2.4.80',
+};
+const SOP = {
+  intraoral: '1.2.840.10008.5.1.4.1.1.1.3',
+  ct: '1.2.840.10008.5.1.4.1.1.2',
+};
+
+/** Deterministic UID under the 2.25 (UUID-derived) root. */
+function uid(seed) {
+  const hex = createHash('sha256').update(`mivo-labs-synthetic:${seed}`).digest('hex').slice(0, 32);
+  return `2.25.${BigInt(`0x${hex}`).toString(10)}`;
+}
+
+// ── Minimal explicit VR little endian writer ──────────────────────────────────
+const LONG_VRS = new Set(['OB', 'OW', 'OF', 'SQ', 'UT', 'UN']);
+
+function pad(buffer, vr) {
+  if (buffer.length % 2 === 0) return buffer;
+  const padByte = vr === 'UI' || vr === 'OB' ? 0x00 : 0x20;
+  return Buffer.concat([buffer, Buffer.from([padByte])]);
+}
+
+function valueBytes(vr, value) {
+  if (Buffer.isBuffer(value)) return value;
+  if (vr === 'US') {
+    const values = [].concat(value);
+    const buffer = Buffer.alloc(values.length * 2);
+    values.forEach((v, i) => buffer.writeUInt16LE(v, i * 2));
+    return buffer;
+  }
+  if (vr === 'UL') {
+    const buffer = Buffer.alloc(4);
+    buffer.writeUInt32LE(value, 0);
+    return buffer;
+  }
+  return Buffer.from([].concat(value).join('\\'), 'latin1');
+}
+
+function element(tag, vr, value, { undefinedLength = false } = {}) {
+  const [group, elem] = tag;
+  const data = undefinedLength ? value : pad(valueBytes(vr, value), vr);
+  const long = LONG_VRS.has(vr);
+  const header = Buffer.alloc(long ? 12 : 8);
+  header.writeUInt16LE(group, 0);
+  header.writeUInt16LE(elem, 2);
+  header.write(vr, 4, 'latin1');
+  if (long) header.writeUInt32LE(undefinedLength ? 0xffffffff : data.length, 8);
+  else header.writeUInt16LE(data.length, 6);
+  return Buffer.concat([header, data]);
+}
+
+function item(data) {
+  const header = Buffer.alloc(8);
+  header.writeUInt16LE(0xfffe, 0);
+  header.writeUInt16LE(0xe000, 2);
+  const padded = pad(data, 'OB');
+  header.writeUInt32LE(padded.length, 4);
+  return Buffer.concat([header, padded]);
+}
+
+function sequenceDelimiter() {
+  const buffer = Buffer.alloc(8);
+  buffer.writeUInt16LE(0xfffe, 0);
+  buffer.writeUInt16LE(0xe0dd, 2);
+  return buffer;
+}
+
+function part10({ sopClassUid, sopInstanceUid, transferSyntaxUid, dataset }) {
+  const metaBody = Buffer.concat([
+    element([0x0002, 0x0001], 'OB', Buffer.from([0x00, 0x01])),
+    element([0x0002, 0x0002], 'UI', sopClassUid),
+    element([0x0002, 0x0003], 'UI', sopInstanceUid),
+    element([0x0002, 0x0010], 'UI', transferSyntaxUid),
+    element([0x0002, 0x0012], 'UI', uid('implementation')),
+    element([0x0002, 0x0013], 'SH', 'MIVO_SYNTH_1'),
+  ]);
+  const meta = Buffer.concat([element([0x0002, 0x0000], 'UL', metaBody.length), metaBody]);
+  const preamble = Buffer.alloc(128);
+  return Buffer.concat([preamble, Buffer.from('DICM', 'latin1'), meta, ...dataset]);
+}
+
+// ── Test patterns ────────────────────────────────────────────────────────────
+
+/** 12-bit unsigned pattern: gradient, grid, a bright disc and an orientation marker. */
+function intraoralPattern(width, height) {
+  const pixels = new Uint16Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let value = Math.round((x / (width - 1)) * 2400 + (y / (height - 1)) * 800);
+      if (x % 64 === 0 || y % 64 === 0) value = 3600;
+      const dx = x - width * 0.62;
+      const dy = y - height * 0.5;
+      if (dx * dx + dy * dy < (height * 0.18) ** 2) value = 4000;
+      // "L" marker in the top-left corner shows orientation.
+      if ((x > 16 && x < 26 && y > 16 && y < 80) || (y > 70 && y < 80 && x > 16 && x < 60)) value = 4095;
+      pixels[y * width + x] = value;
+    }
+  }
+  return pixels;
+}
+
+/** Signed 16-bit CT-like slice: a sphere whose radius depends on the slice position. */
+function ctSlice(size, z, depth) {
+  const pixels = new Int16Array(size * size);
+  const center = size / 2;
+  const sphereRadius = size * 0.35;
+  const dz = (z - (depth - 1) / 2) * (size / depth);
+  const r2 = sphereRadius ** 2 - dz ** 2;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const d2 = (x - center) ** 2 + (y - center) ** 2;
+      let hu = -1000;
+      if (d2 < (size * 0.45) ** 2) hu = 0;
+      if (r2 > 0 && d2 < r2) hu = 1200;
+      if (x < 12 && y < 12 + z * 2) hu = 2000; // slice-index bar
+      pixels[y * size + x] = hu + 1024;
+    }
+  }
+  return pixels;
+}
+
+// ── Codecs (from the same packages the viewer decodes with) ──────────────────
+
+async function encodeJ2K(pixels, width, height) {
+  const factory = loaderRequire('@cornerstonejs/codec-openjpeg/wasmjs');
+  const codec = await factory();
+  const encoder = new codec.J2KEncoder();
+  const decoded = encoder.getDecodedBuffer({
+    width,
+    height,
+    bitsPerSample: 16,
+    componentCount: 1,
+    isSigned: false,
+    isUsingColorTransform: false,
+  });
+  decoded.set(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength));
+  encoder.encode();
+  const encoded = Buffer.from(encoder.getEncodedBuffer());
+  encoder.delete();
+  return encoded;
+}
+
+async function encodeJpegLs(pixels, width, height) {
+  const factory = loaderRequire('@cornerstonejs/codec-charls/wasmjs');
+  const codec = await factory();
+  const encoder = new codec.JpegLSEncoder();
+  const decoded = encoder.getDecodedBuffer({ width, height, bitsPerSample: 16, componentCount: 1 });
+  decoded.set(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength));
+  encoder.setNearLossless(0);
+  encoder.encode();
+  const encoded = Buffer.from(encoder.getEncodedBuffer());
+  encoder.delete();
+  return encoded;
+}
+
+// ── Builders ─────────────────────────────────────────────────────────────────
+
+function commonPatient() {
+  return [
+    element([0x0010, 0x0010], 'PN', 'SYNTHETIC^PHANTOM'),
+    element([0x0010, 0x0020], 'LO', 'SYNTH-0001'),
+  ];
+}
+
+async function intraoral({ name, transferSyntaxUid, seriesNumber, description }) {
+  const width = 640;
+  const height = 480;
+  const pixels = intraoralPattern(width, height);
+  const studyUid = uid('study-intraoral');
+  const seriesUid = uid(`series-${name}`);
+  const sopInstanceUid = uid(`instance-${name}`);
+
+  let pixelElement;
+  if (transferSyntaxUid === TS.explicitLE) {
+    pixelElement = element([0x7fe0, 0x0010], 'OW', Buffer.from(pixels.buffer));
+  } else {
+    const frame =
+      transferSyntaxUid === TS.jpeg2000Lossless
+        ? await encodeJ2K(pixels, width, height)
+        : await encodeJpegLs(pixels, width, height);
+    pixelElement = element(
+      [0x7fe0, 0x0010],
+      'OB',
+      Buffer.concat([item(Buffer.alloc(0)), item(frame), sequenceDelimiter()]),
+      { undefinedLength: true },
+    );
+  }
+
+  return part10({
+    sopClassUid: SOP.intraoral,
+    sopInstanceUid,
+    transferSyntaxUid,
+    dataset: [
+      element([0x0008, 0x0016], 'UI', SOP.intraoral),
+      element([0x0008, 0x0018], 'UI', sopInstanceUid),
+      element([0x0008, 0x0020], 'DA', '20260101'),
+      element([0x0008, 0x0060], 'CS', 'IO'),
+      element([0x0008, 0x1030], 'LO', 'Synthetic intraoral study'),
+      element([0x0008, 0x103e], 'LO', description),
+      ...commonPatient(),
+      element([0x0020, 0x000d], 'UI', studyUid),
+      element([0x0020, 0x000e], 'UI', seriesUid),
+      element([0x0020, 0x0011], 'IS', String(seriesNumber)),
+      element([0x0020, 0x0013], 'IS', '1'),
+      element([0x0028, 0x0002], 'US', 1),
+      element([0x0028, 0x0004], 'CS', 'MONOCHROME2'),
+      element([0x0028, 0x0010], 'US', height),
+      element([0x0028, 0x0011], 'US', width),
+      element([0x0028, 0x0030], 'DS', ['0.1', '0.1']),
+      element([0x0028, 0x0100], 'US', 16),
+      element([0x0028, 0x0101], 'US', 12),
+      element([0x0028, 0x0102], 'US', 11),
+      element([0x0028, 0x0103], 'US', 0),
+      element([0x0028, 0x1050], 'DS', '2048'),
+      element([0x0028, 0x1051], 'DS', '4096'),
+      pixelElement,
+    ],
+  });
+}
+
+function ctStackSlice(index, depth, size) {
+  const studyUid = uid('study-ct');
+  const seriesUid = uid('series-ct-stack');
+  const sopInstanceUid = uid(`instance-ct-${index}`);
+  const pixels = ctSlice(size, index, depth);
+  const zPosition = (index * 2.5).toFixed(2);
+  return part10({
+    sopClassUid: SOP.ct,
+    sopInstanceUid,
+    transferSyntaxUid: TS.explicitLE,
+    dataset: [
+      element([0x0008, 0x0016], 'UI', SOP.ct),
+      element([0x0008, 0x0018], 'UI', sopInstanceUid),
+      element([0x0008, 0x0020], 'DA', '20260102'),
+      element([0x0008, 0x0060], 'CS', 'CT'),
+      element([0x0008, 0x1030], 'LO', 'Synthetic CT phantom'),
+      element([0x0008, 0x103e], 'LO', 'Sphere phantom axial'),
+      ...commonPatient(),
+      element([0x0020, 0x000d], 'UI', studyUid),
+      element([0x0020, 0x000e], 'UI', seriesUid),
+      element([0x0020, 0x0011], 'IS', '1'),
+      element([0x0020, 0x0013], 'IS', String(index + 1)),
+      element([0x0020, 0x0032], 'DS', ['-64', '-64', zPosition]),
+      element([0x0020, 0x0037], 'DS', ['1', '0', '0', '0', '1', '0']),
+      element([0x0028, 0x0002], 'US', 1),
+      element([0x0028, 0x0004], 'CS', 'MONOCHROME2'),
+      element([0x0028, 0x0010], 'US', size),
+      element([0x0028, 0x0011], 'US', size),
+      element([0x0028, 0x0030], 'DS', ['0.5', '0.5']),
+      element([0x0028, 0x0100], 'US', 16),
+      element([0x0028, 0x0101], 'US', 16),
+      element([0x0028, 0x0102], 'US', 15),
+      element([0x0028, 0x0103], 'US', 0),
+      element([0x0028, 0x1050], 'DS', '400'),
+      element([0x0028, 0x1051], 'DS', '2000'),
+      element([0x0028, 0x1052], 'DS', '-1024'),
+      element([0x0028, 0x1053], 'DS', '1'),
+      element([0x7fe0, 0x0010], 'OW', Buffer.from(pixels.buffer)),
+    ],
+  });
+}
+
+async function main() {
+  rmSync(outDir, { recursive: true, force: true });
+  const write = (relative, data) => {
+    const target = path.join(outDir, relative);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, data);
+    console.log(`  ${path.relative(root, target)}  ${data.length} bytes`);
+  };
+
+  console.log('Writing synthetic fixtures:');
+  write(
+    'single/intraoral-explicit-le.dcm',
+    await intraoral({ name: 'le', transferSyntaxUid: TS.explicitLE, seriesNumber: 1, description: 'Uncompressed' }),
+  );
+  write(
+    'codecs/intraoral-jpeg2000-lossless.dcm',
+    await intraoral({ name: 'j2k', transferSyntaxUid: TS.jpeg2000Lossless, seriesNumber: 2, description: 'JPEG 2000 lossless' }),
+  );
+  write(
+    'codecs/intraoral-jpegls-lossless.dcm',
+    await intraoral({ name: 'jls', transferSyntaxUid: TS.jpegLsLossless, seriesNumber: 3, description: 'JPEG-LS lossless' }),
+  );
+
+  const depth = 12;
+  for (let index = 0; index < depth; index += 1) {
+    // File names run opposite to slice position so ordering by geometry is exercised.
+    write(`stack/ct-${String(depth - index).padStart(3, '0')}.dcm`, ctStackSlice(index, depth, 128));
+  }
+
+  write('invalid/not-dicom.txt', Buffer.from('This is not a DICOM file.\n'));
+  const good = await intraoral({ name: 'corrupt', transferSyntaxUid: TS.explicitLE, seriesNumber: 9, description: 'Truncated' });
+  write('invalid/truncated-pixel-data.dcm', good.subarray(0, good.length - 200_000));
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
