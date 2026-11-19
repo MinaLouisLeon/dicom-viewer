@@ -1,6 +1,6 @@
-import { DicomViewerError } from '../core/errors';
-import type { RendererConfig, StackImage, ViewportStatus } from '../core/renderer';
-import type { AutoWindowOptions, WindowValue } from './windowPresets';
+import { DicomViewerError } from '@mihawksolutions/dicom-viewer/internal';
+import type { RendererConfig, StackImage, ViewportStatus } from '@mihawksolutions/dicom-viewer/internal';
+import type { AutoWindowOptions, WindowValue } from '@mihawksolutions/dicom-viewer/internal';
 
 /**
  * What the primary mouse button (or one finger) does in the workstation viewports.

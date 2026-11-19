@@ -1,6 +1,6 @@
 import type { DataSet } from 'dicom-parser';
 
-import { readHeaderDataSet, type ReadRange } from '../core/dicomHeader';
+import { readHeaderDataSet, type ReadRange } from './dicomHeader';
 
 /**
  * Attributes shown in the corner overlay of a viewport. Patient fields are read only

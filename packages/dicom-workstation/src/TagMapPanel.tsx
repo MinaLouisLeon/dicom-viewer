@@ -3,7 +3,7 @@ import { Fragment, useEffect, useId, useMemo, useState, type ReactElement } from
 import { useWorkstation } from './context';
 import { downloadBlob } from './exportImage';
 import { Icon } from './icons';
-import { countTagNodes, filterTagNodes, readTagMap, tagNodesToJson, type TagNode } from './tagMap';
+import { countTagNodes, filterTagNodes, readTagMap, tagNodesToJson, type TagNode } from '@mihawksolutions/dicom-viewer/internal';
 
 type LoadState = { kind: 'idle' } | { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; nodes: TagNode[] };
 

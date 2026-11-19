@@ -1,13 +1,13 @@
 import { useEffect, useId, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 
-import { VOLUME_PRESETS } from '../core/renderer';
-import type { SeriesSummary } from '../core/studyModel';
+import { VOLUME_PRESETS } from '@mihawksolutions/dicom-viewer/internal';
+import type { SeriesSummary } from '@mihawksolutions/dicom-viewer/internal';
 
 import { useWorkstation } from './context';
 import { MEASUREMENT_TOOLS, type WorkstationTool } from './gridRenderer';
 import { Icon, TOOL_ICONS, type IconName } from './icons';
 import { GRID_LAYOUTS, MPR_LAYOUTS, MPR_SLOTS, cellCount, gridId, sameGrid, type GridLayout, type MprLayout } from './layouts';
-import { presetApplies } from './windowPresets';
+import { presetApplies } from '@mihawksolutions/dicom-viewer/internal';
 
 /** A labelled button with an icon, used in toolbars, popovers and the side menu. */
 export function ActionButton(props: {

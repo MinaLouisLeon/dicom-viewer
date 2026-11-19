@@ -10,7 +10,7 @@ Version 0.5.0 is the initial release. Earlier 2D and 3D browser checks used synt
 - Only the header attributes needed to group and order images are read. Patient identifiers are not read by the grouping step.
 - Selected files stay in memory for the session. Closing the study, unmounting, or calling `clear()` releases them. After a refresh the user selects the files again.
 - Error objects carry a code only. They never include file names or DICOM values.
-- `<DicomWorkstation />` reads more header attributes on demand for its corner overlay and its Map tab (DICOM tag map). Patient name, ID, birth date and similar stay hidden until the user turns on **Show patient details**, and `allowPatientInfo={false}` keeps them hidden for good. Measurements live only for the session. PNG and JSON exports are made in the browser and saved by the user.
+- `readTagMap` and `readImageInfo` read header attributes, including patient identifiers, only when called. `readTagMap` can redact them (`redactPatientData`).
 - Cornerstone stores GPU capability flags (`cornerstone3D.renderingCapabilities`) and a log level (`loglevel`) in `localStorage`. Neither holds clinical data.
 
 ## Install (Vite + React)
@@ -78,33 +78,19 @@ The viewer fills its container. Give the container a height.
 
 If your app uses a non-root `base`, pass `codecBasePath={`${base}mihawk-dicom-viewer/codecs/`}`.
 
-## Full app: `<DicomWorkstation />`
+## Building blocks
 
-`<DicomWorkstation />` is the complete viewer app as one component, ready to embed in another React product. It is what the standalone demo renders.
+Besides `<DicomViewer />`, the package exports the pieces the ready app is built from, for hosts that want their own interface:
 
-```tsx
-import { DEFAULT_CODEC_BASE_PATH, DicomWorkstation } from '@mihawksolutions/dicom-viewer';
+- **Brightness and contrast:** `DEFAULT_WINDOW_PRESETS`, `presetApplies`, `computeAutoWindow`, `autoWindowOptionsFor`.
+- **DICOM tags:** `readTagMap`, `filterTagNodes`, `countTagNodes`, `tagNodesToJson`, `lookupTag`, `formatTag`, `PATIENT_IDENTIFYING_TAGS`.
+- **Overlay:** `readImageInfo`, `orientationMarkers`, `directionLabel`, `formatPersonName`.
 
-<div style={{ height: '100vh' }}>
-  <DicomWorkstation
-    codecBasePath={import.meta.env.BASE_URL + DEFAULT_CODEC_BASE_PATH.slice(1)}
-    title="Imaging"
-    headerEnd={<HostAccountMenu />}
-  />
-</div>
-```
+## Ready app
 
-- **Tabs:** **Viewer** and **Map**. Map is a searchable DICOM tag map of the active image, with nested sequences, copy and JSON export.
-- **Layout selector:** viewport grids from 1 × 1 to 3 × 3 plus "1 large + 2" layouts, a different series per cell (drag from the series list or tap a thumbnail), and per-cell **3D / MPR** with five arrangements, a plane picker per pane, thick slab (AVG/MIP/MinIP), oblique planes, an orientation cube and a 3D style picker.
-- **Brightness & contrast:** **Auto** (from the image's pixel values), **Default** (from the file), and CT presets such as lungs, bones, brain, soft tissue, abdomen, mediastinum and teeth, plus a custom width and level. Keys `1`–`9`.
-- **Measurements:** length, angle, Cobb angle, bidirectional, rectangle and ellipse ROI, probe, arrow note, eraser. Session only.
-- **Image:** invert, rotate, flip, zoom, reset, magnify, cine with adjustable speed.
-- **Linked viewports:** scrolling, zoom/pan and window/level, plus reference lines.
-- **Overlay:** corner information and orientation markers, PNG export, full screen.
-- **Phone and tablet:** below 1024 px of component width the toolbar becomes a side menu (from the right) with Navigate, Contrast and Measure tabs, layouts, show/hide switches, a 2D / 3D switch and a Reset button, plus a thumbnail strip under the viewer. `menuMode` forces one presentation.
-- **Host integration:** `features` turns parts off, `windowPresets` replaces the presets, `labels` translates every string, `theme` picks dark, light or auto, and `headerStart` / `headerEnd` hold host controls. The ref handle offers `openFiles`, `loadSeries`, `setGrid`, `setTool`, `applyPreset`, `setTab`, `exportImage`, `resetView`, `cancel`, `clear` and `getState`.
+The complete app (tabs, viewport grid, MPR, measurements, tag map, mobile side menu) is a separate package, [`@mihawksolutions/dicom-workstation`](../dicom-workstation/README.md), with its own license. It uses this package as a peer.
 
-Full reference: `apps/docs/src/content/docs/workstation.md` (published under **Workstation** in the documentation). Theme it with the `--mihawk-ws-*` custom properties; every selector is scoped under `.mihawk-ws`.
+`@mihawksolutions/dicom-viewer/internal` and `@mihawksolutions/dicom-viewer/internal/cornerstone` exist for that package and are not a stable API.
 
 ## API
 
@@ -210,4 +196,4 @@ npm run check            # typecheck + unit tests + build package and demo
 npm run smoke:consumer   # pack tarball → install in a clean Vite app → build → check assets
 ```
 
-For a browser exercise, run `npm run smoke:consumer -- --keep`, enter the generated `app` folder, and run `npx vite preview`. Open `/dicom-consumer/`. Select a synthetic fixture from `fixtures/synthetic` in the repository and confirm that it displays. Use `codecs` to exercise JPEG 2000 and JPEG-LS in 2D, and select the files in `cbct` or `cbct-multiframe` and click **Host 3D** to exercise linked cross-sections and volume rendering. Use **Host cancel** during a load and **Host reset** after display. Reset should return the viewer to `idle` and remove the study and images. Capture the browser network, console and application storage during the exercise to verify local-data handling on the test device. Open `/dicom-consumer/?app=workstation` to exercise `<DicomWorkstation />` the same way.
+For a browser exercise, run `npm run smoke:consumer -- --keep`, enter the generated `app` folder, and run `npx vite preview`. Open `/dicom-consumer/`. Select a synthetic fixture from `fixtures/synthetic` in the repository and confirm that it displays. Use `codecs` to exercise JPEG 2000 and JPEG-LS in 2D, and select the files in `cbct` or `cbct-multiframe` and click **Host 3D** to exercise linked cross-sections and volume rendering. Use **Host cancel** during a load and **Host reset** after display. Reset should return the viewer to `idle` and remove the study and images. Capture the browser network, console and application storage during the exercise to verify local-data handling on the test device. Open `/dicom-consumer/?app=workstation` to exercise `<DicomWorkstation />` from the workstation tarball the same way.

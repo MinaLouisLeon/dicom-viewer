@@ -1,6 +1,6 @@
 import type { DataSet, Element } from 'dicom-parser';
 
-import { readHeaderDataSet, type ReadRange } from '../core/dicomHeader';
+import { readHeaderDataSet, type ReadRange } from './dicomHeader';
 import { formatTag, isPrivateTag, lookupTag, normalizeTag } from './tagDictionary';
 
 /** One attribute in the tag map. Sequences carry their items as nested lists. */

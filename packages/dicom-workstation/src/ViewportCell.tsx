@@ -10,12 +10,12 @@ import {
   type RefObject,
 } from 'react';
 
-import { VOLUME_VIEWS, type VolumePlane, type VolumeView } from '../core/renderer';
+import { VOLUME_VIEWS, type VolumePlane, type VolumeView } from '@mihawksolutions/dicom-viewer/internal';
 import { useWorkstation } from './context';
 import { SERIES_DRAG_TYPE } from './controls';
 import { Icon } from './icons';
 import { OrientationCube } from './OrientationCube';
-import { directionLabel, formatDicomDate, formatDicomTime, orientationMarkers, readImageInfo, type ImageInfo } from './imageInfo';
+import { directionLabel, formatDicomDate, formatDicomTime, orientationMarkers, readImageInfo, type ImageInfo } from '@mihawksolutions/dicom-viewer/internal';
 import type { CellState, CellViewState } from './workstationSession';
 import { visibleViews } from './workstationSession';
 

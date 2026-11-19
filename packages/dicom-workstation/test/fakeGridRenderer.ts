@@ -1,14 +1,14 @@
 import { vi } from 'vitest';
 
-import { abortError } from '../src/core/errors';
-import type { StackImage } from '../src/core/renderer';
+import { abortError } from '@mihawksolutions/dicom-viewer/internal';
+import type { StackImage } from '@mihawksolutions/dicom-viewer/internal';
 import {
   IDENTITY_TRANSFORM,
   type CellStatus,
   type CreateGridRenderer,
   type GridRenderer,
   type GridRendererCallbacks,
-} from '../src/workstation/gridRenderer';
+} from '../src/gridRenderer';
 
 export interface FakeGridRenderer extends GridRenderer {
   shown: Map<string, StackImage[]>;

@@ -30,7 +30,7 @@ import {
   ensureInitialized,
   releaseImages,
 } from './cornerstoneSetup';
-import { autoWindowOptionsFor, computeAutoWindow } from '../workstation/windowPresets';
+import { autoWindowOptionsFor, computeAutoWindow } from './windowPresets';
 import { DicomViewerError, abortError, throwIfAborted } from './errors';
 import {
   DEFAULT_MAX_VOLUME_BYTES,

@@ -3,12 +3,16 @@ title: Workstation (full app)
 description: Embed the complete DICOM viewer app, with tabs, a viewport grid, a side menu, presets, measurements and a DICOM tag map, as one React component.
 ---
 
-`<DicomWorkstation />` is the whole viewer app as one component. Drop it into any React + Vite app to get the same experience as the standalone demo. `<DicomViewer />` is still available for hosts that want a single, minimal viewport.
+`<DicomWorkstation />` is the whole viewer app as one component. Drop it into any React + Vite app to get the same experience as the standalone demo. It lives in its own package, `@mihawksolutions/dicom-workstation`, which is licensed separately and builds on the free `@mihawksolutions/dicom-viewer`. `<DicomViewer />` in the free package is still available for hosts that want a single, minimal viewport.
+
+```sh
+npm install @mihawksolutions/dicom-workstation @mihawksolutions/dicom-viewer
+```
 
 ```tsx
 import { useRef } from 'react';
-import '@mihawksolutions/dicom-viewer/styles.css';
-import { DEFAULT_CODEC_BASE_PATH, DicomWorkstation, type DicomWorkstationHandle } from '@mihawksolutions/dicom-viewer';
+import '@mihawksolutions/dicom-workstation/styles.css';
+import { DEFAULT_CODEC_BASE_PATH, DicomWorkstation, type DicomWorkstationHandle } from '@mihawksolutions/dicom-workstation';
 
 export function ImagingPage({ logout }: { logout: () => void }) {
   const workstation = useRef<DicomWorkstationHandle>(null);
@@ -25,7 +29,7 @@ export function ImagingPage({ logout }: { logout: () => void }) {
 }
 ```
 
-Set up Vite with the `mihawkDicomViewer()` plugin, as described in the [Quickstart](../quickstart/). The component fills its container, so give the container a height.
+Set up Vite with the `mihawkDicomViewer()` plugin, as described in the [Quickstart](../quickstart/). The workstation re-exports it at `@mihawksolutions/dicom-workstation/vite`. The component fills its container, so give the container a height.
 
 ## What it includes
 

@@ -5,8 +5,9 @@ Release target: **0.5.0**.
 - [Live documentation](https://mihawk-solutions.github.io/dicom-viewer/)
 - [Live demo](https://mihawk-solutions.github.io/dicom-viewer/demo/)
 
-- `packages/dicom-viewer`: the npm package. See its [README](packages/dicom-viewer/README.md).
-- `apps/demo`: standalone React + Vite web app. It renders `<DicomWorkstation />`, the full viewer app (tabs, viewport grid, side menu, presets, measurements, DICOM tag map), which other React apps can embed as one component.
+- `packages/dicom-viewer`: the free package with the building blocks: `<DicomViewer />`, file scanning, renderers, presets and the tag reader. See its [README](packages/dicom-viewer/README.md).
+- `packages/dicom-workstation`: the ready app, `<DicomWorkstation />`, as a separate commercial package built on the free one. See its [README](packages/dicom-workstation/README.md).
+- `apps/demo`: standalone React + Vite web app. It renders `<DicomWorkstation />` from the workstation package.
 - `apps/docs`: Astro Starlight documentation for the package.
 - `fixtures/`: synthetic DICOM test data only. See [fixtures/README.md](fixtures/README.md).
 - `scripts/`: fixture generator and clean-consumer smoke test.
@@ -14,10 +15,10 @@ Release target: **0.5.0**.
 ```sh
 npm install
 npm run dev              # demo at http://localhost:5173
-npm run check            # typecheck + tests + builds
+npm run check            # typecheck + tests + builds (both packages and the demo)
 npm run build:pages      # docs and standalone demo in apps/docs/dist
 npm run preview:pages    # serve the built Pages site locally
-npm run smoke:consumer   # tarball → clean Vite app → build checks
+npm run smoke:consumer   # both tarballs → clean Vite app → build checks
 ```
 
 The demo generates its synthetic dental and head CT samples before startup and build.

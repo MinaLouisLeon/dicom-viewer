@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WorkstationSession, resizeCells, visibleViews, volumeToolFor } from '../src/workstation/workstationSession';
-import { createFakeVolumeRenderer } from './fakeRenderer';
+import { WorkstationSession, resizeCells, visibleViews, volumeToolFor } from '../src/workstationSession';
+import { createFakeVolumeRenderer } from './fakeVolumeRenderer';
 import { createFakeGridRenderer } from './fakeGridRenderer';
 import { fixtureFile, fixturePaths } from './fixtures';
 

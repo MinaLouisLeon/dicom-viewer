@@ -1,4 +1,4 @@
-import { DicomViewerError, isAbortError } from '../core/errors';
+import { DicomViewerError, isAbortError } from '@mihawksolutions/dicom-viewer/internal';
 import {
   VOLUME_VIEWS,
   type CreateVolumeRenderer,
@@ -9,10 +9,10 @@ import {
   type VolumeStatus,
   type VolumeSlab,
   type VolumeView,
-} from '../core/renderer';
-import { scanFiles, type ScanOptions, type SkippedFile } from '../core/scanFiles';
-import type { LocalInstance, LocalSeries, LocalStudy, SeriesSummary, StudySummary } from '../core/studyModel';
-import type { ViewerProgress } from '../core/viewerSession';
+} from '@mihawksolutions/dicom-viewer/internal';
+import { scanFiles, type ScanOptions, type SkippedFile } from '@mihawksolutions/dicom-viewer/internal';
+import type { LocalInstance, LocalSeries, LocalStudy, SeriesSummary, StudySummary } from '@mihawksolutions/dicom-viewer/internal';
+import type { ViewerProgress } from '@mihawksolutions/dicom-viewer/internal';
 import {
   IDENTITY_TRANSFORM,
   NO_SYNC,
@@ -23,7 +23,7 @@ import {
   type WorkstationTool,
 } from './gridRenderer';
 import { MPR_SLOTS, cellCount, clampGrid, type GridLayout, type MprLayout } from './layouts';
-import { DEFAULT_WINDOW_PRESETS, autoWindowOptionsFor, type WindowPreset, type WindowValue } from './windowPresets';
+import { DEFAULT_WINDOW_PRESETS, autoWindowOptionsFor, type WindowPreset, type WindowValue } from '@mihawksolutions/dicom-viewer/internal';
 
 export type WorkstationPhase = 'idle' | 'scanning' | 'ready' | 'error';
 export type WorkstationTab = 'viewer' | 'map';

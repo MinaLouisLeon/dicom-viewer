@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@mihawksolutions/dicom-viewer": "0.5.0",
+    "@mihawksolutions/dicom-workstation": "0.1.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

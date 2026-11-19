@@ -24,9 +24,9 @@ import {
   synchronizers,
 } from '@cornerstonejs/tools';
 
-import { FileRegistry, PINCH_ZOOM_BINDING, PINCH_ZOOM_TOOL, classifyLoadError, ensureInitialized } from '../core/cornerstoneSetup';
-import { DicomViewerError, abortError, throwIfAborted } from '../core/errors';
-import type { RendererConfig, StackImage } from '../core/renderer';
+import { FileRegistry, PINCH_ZOOM_BINDING, PINCH_ZOOM_TOOL, classifyLoadError, ensureInitialized } from '@mihawksolutions/dicom-viewer/internal/cornerstone';
+import { DicomViewerError, abortError, throwIfAborted } from '@mihawksolutions/dicom-viewer/internal';
+import type { RendererConfig, StackImage } from '@mihawksolutions/dicom-viewer/internal';
 import {
   IDENTITY_TRANSFORM,
   type CellStatus,
@@ -38,7 +38,7 @@ import {
   type WindowRequest,
   type WorkstationTool,
 } from './gridRenderer';
-import { autoWindowOptionsFor, computeAutoWindow } from './windowPresets';
+import { autoWindowOptionsFor, computeAutoWindow } from '@mihawksolutions/dicom-viewer/internal';
 
 type ToolGroup = NonNullable<ReturnType<typeof ToolGroupManager.createToolGroup>>;
 

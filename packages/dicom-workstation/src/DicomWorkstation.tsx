@@ -17,11 +17,11 @@ import {
   type RefObject,
 } from 'react';
 
-import { DEFAULT_CODEC_BASE_PATH } from '../core/assetPaths';
-import { collectDroppedFiles, sortByPath } from '../core/collectFiles';
-import type { DicomViewerError } from '../core/errors';
-import { createCornerstoneVolumeRenderer } from '../core/renderer';
-import type { SeriesSummary, StudySummary } from '../core/studyModel';
+import { DEFAULT_CODEC_BASE_PATH } from '@mihawksolutions/dicom-viewer/internal';
+import { collectDroppedFiles, sortByPath } from '@mihawksolutions/dicom-viewer/internal';
+import type { DicomViewerError } from '@mihawksolutions/dicom-viewer/internal';
+import { createCornerstoneVolumeRenderer } from '@mihawksolutions/dicom-viewer/internal';
+import type { SeriesSummary, StudySummary } from '@mihawksolutions/dicom-viewer/internal';
 import {
   DEFAULT_FEATURES,
   WorkstationContext,
@@ -51,7 +51,7 @@ import { resolveWorkstationLabels, type WorkstationLabels } from './labels';
 import type { GridLayout } from './layouts';
 import { TagMapPanel } from './TagMapPanel';
 import { ViewportCell } from './ViewportCell';
-import type { WindowPreset } from './windowPresets';
+import type { WindowPreset } from '@mihawksolutions/dicom-viewer/internal';
 import {
   WorkstationSession,
   type CellMode,

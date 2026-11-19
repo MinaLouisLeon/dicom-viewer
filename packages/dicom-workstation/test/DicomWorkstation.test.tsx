@@ -4,7 +4,7 @@ import { createRef } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { DicomWorkstation, defaultWorkstationLabels, type DicomWorkstationHandle } from '../src/index';
-import { createFakeVolumeRenderer } from './fakeRenderer';
+import { createFakeVolumeRenderer } from './fakeVolumeRenderer';
 import { createFakeGridRenderer } from './fakeGridRenderer';
 import { fixtureFile, fixturePaths } from './fixtures';
 

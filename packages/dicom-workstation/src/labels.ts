@@ -1,6 +1,6 @@
-import { defaultLabels, type DicomViewerLabels } from '../i18n/labels';
+import { defaultLabels, type DicomViewerLabels } from '@mihawksolutions/dicom-viewer/internal';
 import type { WorkstationTool } from './gridRenderer';
-import type { SlabMode } from '../core/renderer';
+import type { SlabMode } from '@mihawksolutions/dicom-viewer/internal';
 import type { MprLayout } from './layouts';
 
 /**

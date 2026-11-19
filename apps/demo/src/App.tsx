@@ -2,7 +2,7 @@ import {
   DEFAULT_CODEC_BASE_PATH,
   DicomWorkstation,
   type DicomWorkstationHandle,
-} from '@mihawksolutions/dicom-viewer';
+} from '@mihawksolutions/dicom-workstation';
 import { useEffect, useRef, useState } from 'react';
 
 const headPaths = Array.from({ length: 48 }, (_, index) => `head/ct-${String(index + 1).padStart(3, '0')}.dcm`);
