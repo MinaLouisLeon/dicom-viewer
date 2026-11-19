@@ -1,11 +1,15 @@
 # @mihawksolutions/dicom-viewer workspace
 
+Release target: **0.5.0**.
+
+- [Live documentation](https://mihawk-solutions.github.io/dicom-viewer/)
+- [Live demo](https://mihawk-solutions.github.io/dicom-viewer/demo/)
+
 - `packages/dicom-viewer`: the npm package. See its [README](packages/dicom-viewer/README.md).
 - `apps/demo`: standalone React + Vite demo that uses the package's public API.
 - `apps/docs`: Astro Starlight documentation for the package.
 - `fixtures/`: synthetic DICOM test data only. See [fixtures/README.md](fixtures/README.md).
 - `scripts/`: fixture generator and clean-consumer smoke test.
-- [Implementation plan](mihawksolutions-dicom-viewer-implementation-plan.md)
 
 ```sh
 npm install
@@ -23,4 +27,4 @@ To preview what GitHub Pages will serve, run `npm run build:pages` followed by
 `npm run preview:pages` and open <http://localhost:4321/dicom-viewer/>.
 Use **Open demo** to launch the built viewer in a separate tab.
 
-The Pages workflow builds with Node.js 24 and deploys from `main` when the repository's Pages source is set to GitHub Actions. The docs and standalone demo are served from the same artifact. [Expected GitHub Pages URL](https://mihawk-solutions.github.io/dicom-viewer/)
+The Pages workflow builds with Node.js 24 and deploys from `main` when the repository's Pages source is set to GitHub Actions. The docs and standalone demo are served from the same artifact.
