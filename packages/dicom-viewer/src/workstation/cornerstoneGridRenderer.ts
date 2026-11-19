@@ -30,6 +30,7 @@ import type { RendererConfig, StackImage } from '../core/renderer';
 import {
   IDENTITY_TRANSFORM,
   type CellStatus,
+  type AnnotationVisibility,
   type CellTransform,
   type GridRenderer,
   type GridRendererCallbacks,
@@ -155,17 +156,50 @@ export async function createCornerstoneGridRenderer(
   group.setToolActive(PanTool.toolName, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }] });
 
   let primaryTool: keyof typeof TOOL_NAMES | undefined;
+  let visibility: AnnotationVisibility = { measurements: true, annotations: true };
+  const annotationNames = new Set(ANNOTATION_TOOLS.map((Tool) => Tool.toolName));
+  const isHidden = (name: string | undefined) =>
+    name === ArrowAnnotateTool.toolName ? !visibility.annotations : name !== undefined && annotationNames.has(name) && !visibility.measurements;
+
+  /** Puts every tool in the state that matches the selected tool and the visibility settings. */
+  const applyToolStates = (): void => {
+    const primaryName = primaryTool ? TOOL_NAMES[primaryTool] : undefined;
+    for (const name of Object.values(TOOL_NAMES)) {
+      if (name === primaryName) continue;
+      if (name === EraserTool.toolName || name === MagnifyTool.toolName) group.setToolDisabled(name);
+      // Passive keeps the fixed bindings (wheel, right and middle button) and annotation editing.
+      else group.setToolPassive(name);
+    }
+    if (primaryName) group.setToolActive(primaryName, { bindings: [PRIMARY_BINDING] });
+    // Re-assert the fixed bindings, which passive/disabled calls on the same tool may have dropped.
+    if (primaryTool !== 'scroll') group.setToolActive(StackScrollTool.toolName, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Wheel }] });
+    if (primaryTool !== 'zoom') group.setToolActive(ZoomTool.toolName, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Secondary }] });
+    if (primaryTool !== 'pan') group.setToolActive(PanTool.toolName, { bindings: [{ mouseButton: ToolEnums.MouseBindings.Auxiliary }] });
+    engine?.render();
+  };
+
+  /** Hides or shows existing annotations by kind (they stay in memory). */
+  const applyAnnotationVisibility = (): void => {
+    for (const item of annotation.state.getAllAnnotations()) {
+      if (!item.annotationUID) continue;
+      annotation.visibility.setAnnotationVisibility(item.annotationUID, !isHidden(item.metadata?.toolName));
+    }
+    engine?.render();
+  };
+  // New annotations follow the current setting.
+  const onAnnotationAdded = (event: Event): void => {
+    const added = (event as CustomEvent<{ annotation?: { annotationUID?: string; metadata?: { toolName?: string } } }>).detail?.annotation;
+    if (added?.annotationUID && isHidden(added.metadata?.toolName)) {
+      annotation.visibility.setAnnotationVisibility(added.annotationUID, false);
+    }
+  };
+  eventTarget.addEventListener(ToolEnums.Events.ANNOTATION_ADDED, onAnnotationAdded);
+
   const setTool = (requested: WorkstationTool): void => {
     const tool = requested === 'crosshairs' ? 'windowLevel' : requested;
     if (tool === primaryTool) return;
-    if (primaryTool) {
-      const previous = TOOL_NAMES[primaryTool];
-      // Passive keeps the fixed bindings (wheel, right and middle button) and annotation editing.
-      if (previous === EraserTool.toolName) group.setToolDisabled(previous);
-      else group.setToolPassive(previous);
-    }
-    group.setToolActive(TOOL_NAMES[tool], { bindings: [PRIMARY_BINDING] });
     primaryTool = tool;
+    applyToolStates();
   };
   setTool('windowLevel');
 
@@ -601,6 +635,28 @@ export async function createCornerstoneGridRenderer(
       engine?.render();
     },
 
+    setAnnotationVisibility(next) {
+      visibility = { ...next };
+      applyAnnotationVisibility();
+    },
+
+    async renderThumbnail(file, frame, size) {
+      if (destroyed) return undefined;
+      const registry = new FileRegistry();
+      const imageId = registry.imageId(file, frame);
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        await utilities.loadImageToCanvas({ canvas, imageId, thumbnail: true, useCPURendering: true });
+        return canvas.toDataURL('image/png');
+      } catch {
+        return undefined;
+      } finally {
+        registry.release([imageId]);
+      }
+    },
+
     measurementCount(cellId) {
       const cell = cells.get(cellId);
       if (!cell) return 0;
@@ -615,6 +671,7 @@ export async function createCornerstoneGridRenderer(
       for (const cellId of [...cells.keys()]) renderer.detachCell(cellId);
       destroyed = true;
       eventTarget.removeEventListener(Enums.Events.IMAGE_LOAD_FAILED, onImageLoadFailed);
+      eventTarget.removeEventListener(ToolEnums.Events.ANNOTATION_ADDED, onAnnotationAdded);
       resizeObserver?.disconnect();
       for (const syncId of Object.values(syncIds)) SynchronizerManager.destroySynchronizer(syncId);
       ToolGroupManager.destroyToolGroup(toolGroupId);

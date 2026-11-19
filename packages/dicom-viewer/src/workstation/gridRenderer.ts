@@ -68,6 +68,13 @@ export interface SyncOptions {
   windowLevel: boolean;
 }
 
+export interface AnnotationVisibility {
+  /** Lengths, angles, ROIs and probes. */
+  measurements: boolean;
+  /** Arrow notes. */
+  annotations: boolean;
+}
+
 export const NO_SYNC: SyncOptions = Object.freeze({ scroll: false, zoomPan: false, windowLevel: false });
 
 export interface GridRendererCallbacks {
@@ -111,6 +118,10 @@ export interface GridRenderer {
   clearMeasurements(cellId?: string): void;
   /** Number of measurements drawn on a cell's images. */
   measurementCount(cellId: string): number;
+  /** Shows or hides measurements and arrow notes without deleting them. */
+  setAnnotationVisibility(visibility: AnnotationVisibility): void;
+  /** Renders one image into a small PNG data URL, for series thumbnails. Undefined on failure. */
+  renderThumbnail(file: Blob, frame: number | undefined, size: number): Promise<string | undefined>;
   destroy(): void;
 }
 

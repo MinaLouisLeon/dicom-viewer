@@ -138,13 +138,13 @@ export function formatDicomTime(value: string | undefined): string | undefined {
 
 // ── Orientation markers ────────────────────────────────────────────────────
 
-/** Patient direction letters of an LPS direction vector, strongest axis first (for example "LA"). */
+/** Patient direction letters (L/R, A/P, S/I) of an LPS vector, strongest axis first (for example "LA"). */
 export function directionLabel(vector: readonly number[], threshold = 0.25): string {
   const [x = 0, y = 0, z = 0] = vector;
   const axes: [number, string][] = [
     [x, x > 0 ? 'L' : 'R'],
     [y, y > 0 ? 'P' : 'A'],
-    [z, z > 0 ? 'H' : 'F'],
+    [z, z > 0 ? 'S' : 'I'],
   ];
   return axes
     .filter(([value]) => Math.abs(value) >= threshold)

@@ -5,6 +5,7 @@ import {
   useState,
   type DragEvent,
   type KeyboardEvent,
+  type CSSProperties,
   type ReactElement,
   type RefObject,
 } from 'react';
@@ -13,7 +14,8 @@ import { VOLUME_VIEWS, type VolumePlane, type VolumeView } from '../core/rendere
 import { useWorkstation } from './context';
 import { SERIES_DRAG_TYPE } from './controls';
 import { Icon } from './icons';
-import { formatDicomDate, formatDicomTime, orientationMarkers, readImageInfo, type ImageInfo } from './imageInfo';
+import { OrientationCube } from './OrientationCube';
+import { directionLabel, formatDicomDate, formatDicomTime, orientationMarkers, readImageInfo, type ImageInfo } from './imageInfo';
 import type { CellState, CellViewState } from './workstationSession';
 import { visibleViews } from './workstationSession';
 
@@ -44,7 +46,7 @@ function useImageInfo(file: Blob | undefined): ImageInfo | undefined {
   return info && info.file === file ? info.info : undefined;
 }
 
-export function ViewportCell({ cell, index }: { cell: CellState; index: number }): ReactElement {
+export function ViewportCell({ cell, index, style }: { cell: CellState; index: number; style?: CSSProperties }): ReactElement {
   const { session, state, views, labels, features } = useWorkstation();
   const view: CellViewState | undefined = views[cell.id];
   const active = state.activeCellId === cell.id;
@@ -200,7 +202,7 @@ export function ViewportCell({ cell, index }: { cell: CellState; index: number }
     ? labels.seriesLabel({ number: series.seriesNumber, description: series.description, modality: series.modality }) ||
       labels.untitledSeries
     : undefined;
-  const visible = visibleViews(cell.mprLayout);
+  const visible = visibleViews(cell.mprLayout, cell.mprViews);
   const markers = status && info ? orientationMarkers(info.imageOrientationPatient, status) : undefined;
   const windowWidth = status?.windowWidth ?? volumeStatus?.windowWidth;
   const windowCenter = status?.windowCenter ?? volumeStatus?.windowCenter;
@@ -217,6 +219,7 @@ export function ViewportCell({ cell, index }: { cell: CellState; index: number }
       role="group"
       aria-label={active ? labels.activeCell(index + 1) : labels.cellRegion(index + 1)}
       data-testid="mihawk-ws-cell"
+      style={style}
       onPointerDownCapture={() => session.setActiveCell(cell.id)}
       onFocusCapture={() => session.setActiveCell(cell.id)}
       onDragOver={onDragOver}
@@ -245,7 +248,19 @@ export function ViewportCell({ cell, index }: { cell: CellState; index: number }
               const plane = paneView === 'volume' ? undefined : paneView;
               const planeStatus = plane ? volumeStatus?.planes[plane] : undefined;
               const renderingOff = paneView === 'volume' && volumeStatus?.volumeRendering === false;
-              const shown = visible.includes(paneView);
+              const slot = visible.indexOf(paneView);
+              const shown = slot >= 0;
+              const orientation = plane ? volumeStatus?.orientation?.[plane] : undefined;
+              const direction = orientation ? directionLabel(orientation.normal).charAt(0) : undefined;
+              const paneMarkers = orientation
+                ? {
+                    top: directionLabel(orientation.down.map((value) => -value)),
+                    bottom: directionLabel(orientation.down),
+                    left: directionLabel(orientation.right.map((value) => -value)),
+                    right: directionLabel(orientation.right),
+                  }
+                : undefined;
+              const slabText = plane && volumeStatus?.slab ? labels.slabValue(volumeStatus.slab.mode, volumeStatus.slab.thickness) : '';
               return (
                 <div
                   key={paneView}
@@ -254,12 +269,34 @@ export function ViewportCell({ cell, index }: { cell: CellState; index: number }
                   data-shown={shown || undefined}
                   data-active={(view?.activeView ?? 'axial') === paneView || undefined}
                   aria-hidden={!shown || undefined}
+                  style={shown ? { gridArea: `s${slot + 1}` } : undefined}
                 >
                   <div className="mihawk-ws-pane-header">
-                    <span className="mihawk-ws-pane-title">{labels.views[paneView]}</span>
+                    {shown && visible.length > 1 ? (
+                      <select
+                        className="mihawk-ws-pane-picker"
+                        value={paneView}
+                        aria-label={labels.choosePlane(slot + 1)}
+                        data-testid={`mihawk-ws-plane-picker-${slot + 1}`}
+                        onChange={(event) => session.setMprView(slot, event.currentTarget.value as VolumeView, cell.id)}
+                      >
+                        {VOLUME_VIEWS.map((option) => (
+                          <option key={option} value={option} disabled={option === 'volume' && volumeStatus?.volumeRendering === false}>
+                            {labels.views[option]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="mihawk-ws-pane-title">{labels.views[paneView]}</span>
+                    )}
                     {planeStatus && planeStatus.count > 0 && (
                       <span className="mihawk-ws-pane-position">
                         {planeStatus.index + 1} / {planeStatus.count}
+                      </span>
+                    )}
+                    {direction && (
+                      <span className="mihawk-ws-pane-direction" title={labels.viewedFrom(direction)}>
+                        {direction}
                       </span>
                     )}
                   </div>
@@ -278,6 +315,25 @@ export function ViewportCell({ cell, index }: { cell: CellState; index: number }
                     }}
                     onContextMenu={(event) => event.preventDefault()}
                   />
+                  {plane && volumeStatus && state.overlay && features.overlay && (
+                    <div className="mihawk-ws-pane-overlay" aria-hidden="true">
+                      {volumeStatus.windowWidth !== undefined && volumeStatus.windowCenter !== undefined && (
+                        <span className="mihawk-ws-pane-wl">{labels.windowLevelValue(volumeStatus.windowWidth, volumeStatus.windowCenter)}</span>
+                      )}
+                      {slabText && <span className="mihawk-ws-pane-slab">{slabText}</span>}
+                      {paneMarkers && (
+                        <>
+                          <span className="mihawk-ws-marker mihawk-ws-marker-top">{paneMarkers.top}</span>
+                          <span className="mihawk-ws-marker mihawk-ws-marker-right">{paneMarkers.right}</span>
+                          <span className="mihawk-ws-marker mihawk-ws-marker-bottom">{paneMarkers.bottom}</span>
+                          <span className="mihawk-ws-marker mihawk-ws-marker-left">{paneMarkers.left}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {paneView === 'volume' && shown && volumeStatus?.orientation?.volume && (
+                    <OrientationCube {...volumeStatus.orientation.volume} />
+                  )}
                   {renderingOff && <div className="mihawk-ws-pane-notice">{labels.volumeRenderingUnavailable}</div>}
                   {plane && planeStatus && planeStatus.count > 1 && shown && (
                     <input
@@ -297,7 +353,7 @@ export function ViewportCell({ cell, index }: { cell: CellState; index: number }
           </div>
         )}
 
-        {state.overlay && features.overlay && displayed && (
+        {state.overlay && features.overlay && displayed && !is3d && (
           <div className="mihawk-ws-overlay" aria-hidden="true" data-testid="mihawk-ws-overlay">
             <div className="mihawk-ws-corner mihawk-ws-corner-tl">
               {state.patientInfo && info?.patientName && <span>{info.patientName}</span>}

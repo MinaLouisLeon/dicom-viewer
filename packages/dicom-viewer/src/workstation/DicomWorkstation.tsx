@@ -39,6 +39,8 @@ import {
   MeasurementTools,
   NavigationTools,
   SeriesList,
+  SeriesStrip,
+  primaryCellStyle,
   ViewControls,
   WindowControls,
 } from './controls';
@@ -428,19 +430,6 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
         onKeyDown={onKeyDown}
       >
         <header className="mihawk-ws-header">
-          {compact && (
-            <button
-              type="button"
-              className="mihawk-ws-action mihawk-ws-action-icon"
-              aria-label={labels.menu}
-              aria-expanded={menuOpen}
-              aria-controls={menuId}
-              data-testid="mihawk-ws-menu-button"
-              onClick={() => setMenuOpen(true)}
-            >
-              <Icon name="menu" />
-            </button>
-          )}
           {props.headerStart}
           {title !== null && <div className="mihawk-ws-title">{title}</div>}
           {tabList}
@@ -514,6 +503,19 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
             )}
           </div>
           {props.headerEnd}
+          {compact && (
+            <button
+              type="button"
+              className="mihawk-ws-action mihawk-ws-action-icon"
+              aria-label={labels.menu}
+              aria-expanded={menuOpen}
+              aria-controls={menuId}
+              data-testid="mihawk-ws-menu-button"
+              onClick={() => setMenuOpen(true)}
+            >
+              <Icon name="menu" />
+            </button>
+          )}
         </header>
 
         <div className="mihawk-ws-body">
@@ -522,6 +524,7 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
               <SeriesList />
             </aside>
           )}
+          <div className="mihawk-ws-center">
           <div
             className="mihawk-ws-main"
             role={tabs.length > 1 ? 'tabpanel' : undefined}
@@ -540,7 +543,7 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
               }}
             >
               {state.cells.map((cell, index) => (
-                <ViewportCell key={cell.id} cell={cell} index={index} />
+                <ViewportCell key={cell.id} cell={cell} index={index} style={index === 0 ? primaryCellStyle(state.grid) : undefined} />
               ))}
             </div>
 
@@ -586,6 +589,8 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
             {dragActive && <div className="mihawk-ws-drop-indicator">{labels.dropZoneTitle}</div>}
 
             {state.tab === 'map' && features.map && <TagMapPanel />}
+          </div>
+          {compact && features.seriesPanel && state.tab === 'viewer' && <SeriesStrip />}
           </div>
         </div>
 

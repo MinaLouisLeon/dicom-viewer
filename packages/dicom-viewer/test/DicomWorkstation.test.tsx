@@ -95,9 +95,24 @@ describe('<DicomWorkstation />', () => {
     expect(menu).not.toHaveAttribute('data-open');
     await user.click(screen.getByTestId('mihawk-ws-menu-button'));
     expect(menu).toHaveAttribute('data-open');
-    for (const title of ['Files', 'Studies', 'Layout', 'Tools', 'Measure', 'Brightness & contrast', 'Image', 'Cine', 'View']) {
-      expect(within(menu).getByText(title, { selector: 'summary span' })).toBeInTheDocument();
+    for (const tab of ['Navigate', 'Contrast', 'Measure']) {
+      expect(within(menu).getByRole('tab', { name: tab })).toBeInTheDocument();
     }
+    expect(within(menu).getByRole('tab', { name: 'Navigate' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(menu).getByTestId('mihawk-ws-tool-windowLevel')).toBeInTheDocument();
+    await user.click(within(menu).getByRole('tab', { name: 'Contrast' }));
+    expect(within(menu).getByTestId('mihawk-ws-preset-bone')).toBeInTheDocument();
+    await user.click(within(menu).getByRole('tab', { name: 'Measure' }));
+    expect(within(menu).getByTestId('mihawk-ws-tool-length')).toBeInTheDocument();
+    expect(within(menu).getByTestId('mihawk-ws-grid-2x2-top')).toBeInTheDocument();
+    expect(within(menu).getByRole('switch', { name: 'Measurements' })).toBeChecked();
+    expect(within(menu).getByRole('switch', { name: 'Cross-references' })).toBeChecked();
+    expect(within(menu).getByTestId('mihawk-ws-mode-2d')).toHaveAttribute('aria-checked', 'true');
+    expect(within(menu).getByTestId('mihawk-ws-reset-all')).toBeInTheDocument();
+    // Series thumbnails under the viewer.
+    const strip = screen.getByTestId('mihawk-ws-strip');
+    expect(within(strip).getAllByRole('button')).toHaveLength(1);
+    expect(within(strip).getByText('12')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(menu).not.toHaveAttribute('data-open');
   });

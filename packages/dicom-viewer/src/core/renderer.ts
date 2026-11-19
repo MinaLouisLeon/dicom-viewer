@@ -13,6 +13,8 @@ export interface RendererConfig {
   volumeRendering?: boolean;
   /** Largest decoded volume, in bytes, the 3D layout will allocate. */
   maxVolumeBytes?: number;
+  /** Initial 3D view preset. @default 'CT-Bone' */
+  volumePreset?: string;
 }
 
 /** Default cap on decoded voxel memory for one volume (2 GiB). */
@@ -124,7 +126,30 @@ export interface VolumeStatus {
   volumeRendering: boolean;
   /** True when the cross-sections are shown inverted. */
   invert?: boolean;
+  /** Thick-slab rendering of the cross-sections. */
+  slab?: VolumeSlab;
+  /** True when the crosshairs may rotate the planes (oblique MPR). */
+  oblique?: boolean;
+  /** Name of the transfer-function preset of the 3D view. */
+  volumePreset?: string;
+  /**
+   * Screen directions of each view in patient LPS coordinates: `right` and `down` on
+   * screen, and `normal` pointing towards the viewer.
+   */
+  orientation?: Partial<Record<VolumeView, { right: [number, number, number]; down: [number, number, number]; normal: [number, number, number] }>>;
 }
+
+/** Thick-slab projection of the cross-sections. `none` shows thin slices. */
+export type SlabMode = 'none' | 'avg' | 'mip' | 'minip';
+
+export interface VolumeSlab {
+  mode: SlabMode;
+  /** Slab thickness in mm (ignored for `none`). */
+  thickness: number;
+}
+
+/** 3D view styles offered to users, mapped to Cornerstone transfer-function presets. */
+export const VOLUME_PRESETS = ['CT-Bone', 'CT-Soft-Tissue', 'CT-MIP', 'CT-Lung', 'CT-AAA', 'CT-Muscle'] as const;
 
 export interface VolumeLoadProgress {
   processed: number;
@@ -165,6 +190,14 @@ export interface VolumeRenderer {
   setWindow?(request: { width: number; center: number } | 'default' | 'auto'): boolean;
   /** Inverts the grey scale of the cross-sections. Optional for custom renderers. */
   setInvert?(invert: boolean): void;
+  /** Average, maximum or minimum intensity over a slab of the given thickness. Optional. */
+  setSlab?(slab: VolumeSlab): void;
+  /** Lets the crosshairs rotate the planes (true) or keeps them orthogonal (false). Optional. */
+  setOblique?(oblique: boolean): void;
+  /** Shows the crosshair reference lines while another tool is selected. Optional. */
+  setCrosshairsVisible?(visible: boolean): void;
+  /** Changes the look of the 3D view (a Cornerstone volume preset name). Optional. */
+  setVolumePreset?(preset: string): void;
   /** Centres the cross-sections and restores zoom, pan, window/level and the 3D orientation. */
   resetView(): void;
   getStatus(): VolumeStatus | undefined;

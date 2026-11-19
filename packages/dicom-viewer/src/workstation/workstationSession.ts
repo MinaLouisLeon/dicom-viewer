@@ -1,12 +1,14 @@
 import { DicomViewerError, isAbortError } from '../core/errors';
-import type {
-  CreateVolumeRenderer,
-  RendererConfig,
-  ViewerTool,
-  VolumePlane,
-  VolumeRenderer,
-  VolumeStatus,
-  VolumeView,
+import {
+  VOLUME_VIEWS,
+  type CreateVolumeRenderer,
+  type RendererConfig,
+  type ViewerTool,
+  type VolumePlane,
+  type VolumeRenderer,
+  type VolumeStatus,
+  type VolumeSlab,
+  type VolumeView,
 } from '../core/renderer';
 import { scanFiles, type ScanOptions, type SkippedFile } from '../core/scanFiles';
 import type { LocalInstance, LocalSeries, LocalStudy, SeriesSummary, StudySummary } from '../core/studyModel';
@@ -20,7 +22,7 @@ import {
   type SyncOptions,
   type WorkstationTool,
 } from './gridRenderer';
-import { clampGrid, type GridLayout, type MprLayout } from './layouts';
+import { MPR_SLOTS, cellCount, clampGrid, type GridLayout, type MprLayout } from './layouts';
 import { DEFAULT_WINDOW_PRESETS, type WindowPreset, type WindowValue } from './windowPresets';
 
 export type WorkstationPhase = 'idle' | 'scanning' | 'ready' | 'error';
@@ -34,6 +36,14 @@ export interface CellState {
   seriesInstanceUid?: string;
   mode: CellMode;
   mprLayout: MprLayout;
+  /** Which plane fills each MPR slot, in slot order (a permutation of the four views). */
+  mprViews: VolumeView[];
+  /** Thick-slab rendering of this cell's cross-sections in 3D. */
+  slab: VolumeSlab;
+  /** True when the crosshairs may tilt the planes (oblique MPR). */
+  oblique: boolean;
+  /** Look of the 3D pane (a Cornerstone volume preset name). */
+  volumePreset: string;
   phase: CellPhase;
   error?: DicomViewerError;
   /** Volume load progress while a 3D cell loads. */
@@ -65,6 +75,12 @@ export interface WorkstationState {
   tab: WorkstationTab;
   /** Frames per second for cine playback. */
   cineFps: number;
+  /** Cine restarts from the first image (true) or stops at the last one (false). */
+  cineLoop: boolean;
+  /** Show measurements (lengths, angles, ROIs, probes). */
+  showMeasurements: boolean;
+  /** Show arrow notes. */
+  showAnnotations: boolean;
 }
 
 /** Fast-changing view state of one cell, kept apart from `WorkstationState`. */
@@ -95,6 +111,10 @@ export interface WorkstationSessionOptions {
   /** Fills empty cells with the next series when files open or the grid grows. @default true */
   autoFill?: boolean;
   cineFps?: number;
+  /** Slab of new 3D cells. @default { mode: 'avg', thickness: 10 } */
+  defaultSlab?: VolumeSlab;
+  /** 3D look of new 3D cells. @default 'CT-Bone' */
+  defaultVolumePreset?: string;
 }
 
 const VOLUME_TOOL_FALLBACK: ViewerTool = 'crosshairs';
@@ -105,16 +125,33 @@ export function volumeToolFor(tool: WorkstationTool): ViewerTool {
   return VOLUME_TOOLS.has(tool) ? (tool as ViewerTool) : VOLUME_TOOL_FALLBACK;
 }
 
+export const DEFAULT_SLAB: VolumeSlab = Object.freeze({ mode: 'avg', thickness: 10 }) as VolumeSlab;
+export const DEFAULT_VOLUME_PRESET = 'CT-Bone';
+
 let cellCounter = 0;
-const newCell = (): CellState => {
+const newCell = (defaults: Pick<CellState, 'slab' | 'volumePreset'> = { slab: DEFAULT_SLAB, volumePreset: DEFAULT_VOLUME_PRESET }): CellState => {
   cellCounter += 1;
-  return { id: `c${cellCounter}`, mode: '2d', mprLayout: 'grid', phase: 'empty', playing: false };
+  return {
+    id: `c${cellCounter}`,
+    mode: '2d',
+    mprLayout: 'grid',
+    mprViews: [...VOLUME_VIEWS],
+    slab: { ...defaults.slab },
+    oblique: false,
+    volumePreset: defaults.volumePreset,
+    phase: 'empty',
+    playing: false,
+  };
 };
 
 /** Keeps existing cells by position and adds empty ones (or drops the extra ones). */
-export function resizeCells(cells: readonly CellState[], count: number): CellState[] {
+export function resizeCells(
+  cells: readonly CellState[],
+  count: number,
+  defaults?: Pick<CellState, 'slab' | 'volumePreset'>,
+): CellState[] {
   const next = cells.slice(0, count);
-  while (next.length < count) next.push(newCell());
+  while (next.length < count) next.push(newCell(defaults));
   return next;
 }
 
@@ -141,12 +178,14 @@ export class WorkstationSession {
   private gridRendererPromise: Promise<GridRenderer> | undefined;
   private gridRenderer: GridRenderer | undefined;
   private cineTimer: ReturnType<typeof setInterval> | undefined;
+  private thumbnails = new Map<string, Promise<string | undefined>>();
+  private thumbnailQueue: Promise<unknown> = Promise.resolve();
   private disposed = false;
 
   constructor(options: WorkstationSessionOptions) {
     this.options = options;
     const grid = clampGrid(options.initialGrid ?? { rows: 1, columns: 1 });
-    const cells = resizeCells([], grid.rows * grid.columns);
+    const cells = resizeCells([], cellCount(grid), this.cellDefaults);
     this.state = {
       phase: 'idle',
       studies: [],
@@ -156,11 +195,21 @@ export class WorkstationSession {
       activeCellId: cells[0]!.id,
       tool: options.initialTool ?? 'windowLevel',
       sync: { ...NO_SYNC },
-      referenceLines: false,
+      referenceLines: true,
       overlay: true,
       patientInfo: false,
       tab: 'viewer',
       cineFps: options.cineFps ?? 10,
+      cineLoop: true,
+      showMeasurements: true,
+      showAnnotations: true,
+    };
+  }
+
+  private get cellDefaults(): Pick<CellState, 'slab' | 'volumePreset'> {
+    return {
+      slab: this.options.defaultSlab ?? DEFAULT_SLAB,
+      volumePreset: this.options.defaultVolumePreset ?? DEFAULT_VOLUME_PRESET,
     };
   }
 
@@ -320,6 +369,7 @@ export class WorkstationSession {
         }
         renderer.setTool(this.state.tool);
         renderer.setSync(this.state.sync);
+        renderer.setAnnotationVisibility({ measurements: this.state.showMeasurements, annotations: this.state.showAnnotations });
       },
       () => {
         if (this.gridRendererPromise === promise) this.gridRendererPromise = undefined;
@@ -363,6 +413,7 @@ export class WorkstationSession {
     this.scanOperation = controller;
     this.releaseAllCells();
     this.studies = [];
+    this.thumbnails.clear();
     this.setState({
       phase: 'scanning',
       progress: { processed: 0, total: files.length },
@@ -476,6 +527,13 @@ export class WorkstationSession {
         const renderer = await this.waitFor(() => this.getVolumeRenderer(cellId), () => Boolean(runtime.volumeElements));
         if (!isCurrent()) return;
         renderer.setTool(volumeToolFor(this.state.tool));
+        const settings = this.cell(cellId);
+        if (settings) {
+          renderer.setSlab?.(settings.slab);
+          renderer.setOblique?.(settings.oblique);
+          renderer.setVolumePreset?.(settings.volumePreset);
+        }
+        renderer.setCrosshairsVisible?.(this.state.referenceLines);
         let lastEmit = 0;
         await renderer.showVolume(
           series.volumeFrames!.map(({ instance, frame }) => ({ file: instance.file, frame })),
@@ -568,6 +626,7 @@ export class WorkstationSession {
     this.releaseAllCells();
     this.gridRenderer?.clearMeasurements();
     this.studies = [];
+    this.thumbnails.clear();
     this.setState({
       phase: 'idle',
       progress: undefined,
@@ -583,14 +642,22 @@ export class WorkstationSession {
 
   setGrid(grid: GridLayout): void {
     const next = clampGrid(grid);
-    const count = next.rows * next.columns;
-    const removed = this.state.cells.slice(count);
+    const count = cellCount(next);
+    // Keep the viewport the user is working in: move it into the last remaining position.
+    let current = this.state.cells;
+    const activeIndex = current.findIndex((cell) => cell.id === this.state.activeCellId);
+    if (activeIndex >= count) {
+      current = [...current];
+      [current[count - 1], current[activeIndex]] = [current[activeIndex]!, current[count - 1]!];
+      this.state = { ...this.state, cells: current };
+    }
+    const removed = current.slice(count);
     for (const cell of removed) {
       const runtime = this.runtime.get(cell.id);
       runtime?.operation?.abort();
       if (runtime) runtime.generation += 1;
     }
-    const cells = resizeCells(this.state.cells, count);
+    const cells = resizeCells(current, count, this.cellDefaults);
     const activeCellId = cells.some((cell) => cell.id === this.state.activeCellId) ? this.state.activeCellId : cells[0]!.id;
     this.setState({ grid: next, cells, activeCellId });
     for (const cell of removed) {
@@ -624,10 +691,49 @@ export class WorkstationSession {
   }
 
   setMprLayout(layout: MprLayout, cellId = this.state.activeCellId): void {
+    const cell = this.cell(cellId);
+    if (!cell) return;
     this.patchCell(cellId, { mprLayout: layout });
+    this.keepActiveViewVisible(cellId);
+  }
+
+  /** Shows `view` in MPR slot `slot` of a cell; the plane it replaces moves to `view`'s old slot. */
+  setMprView(slot: number, view: VolumeView, cellId = this.state.activeCellId): void {
+    const cell = this.cell(cellId);
+    if (!cell || slot < 0 || slot >= cell.mprViews.length) return;
+    const views = [...cell.mprViews];
+    const from = views.indexOf(view);
+    if (from === slot) return;
+    [views[slot], views[from]] = [view, views[slot]!];
+    this.patchCell(cellId, { mprViews: views });
+    this.setView(cellId, { activeView: view });
+  }
+
+  private keepActiveViewVisible(cellId: string): void {
+    const cell = this.cell(cellId);
     const view = this.views[cellId];
-    const visible = visibleViews(layout);
-    if (view && !visible.includes(view.activeView)) this.setView(cellId, { activeView: visible[0]! });
+    if (!cell) return;
+    const visible = visibleViews(cell.mprLayout, cell.mprViews);
+    if (!view || !visible.includes(view.activeView)) this.setView(cellId, { activeView: visible[0]! });
+  }
+
+  /** Average, maximum or minimum intensity over a slab, for a 3D cell. */
+  setSlab(slab: VolumeSlab, cellId = this.state.activeCellId): void {
+    const next = { mode: slab.mode, thickness: Math.min(100, Math.max(0.5, slab.thickness)) };
+    this.patchCell(cellId, { slab: next });
+    this.runtime.get(cellId)?.volumeRenderer?.setSlab?.(next);
+  }
+
+  /** Lets the crosshairs tilt the planes of a 3D cell (true), or keeps them orthogonal. */
+  setOblique(oblique: boolean, cellId = this.state.activeCellId): void {
+    this.patchCell(cellId, { oblique });
+    this.runtime.get(cellId)?.volumeRenderer?.setOblique?.(oblique);
+  }
+
+  /** Changes the look of a 3D cell's volume pane. */
+  setVolumePreset(preset: string, cellId = this.state.activeCellId): void {
+    this.patchCell(cellId, { volumePreset: preset });
+    this.runtime.get(cellId)?.volumeRenderer?.setVolumePreset?.(preset);
   }
 
   setActiveView(view: VolumeView, cellId = this.state.activeCellId): void {
@@ -641,6 +747,9 @@ export class WorkstationSession {
   // ── Tools and view ─────────────────────────────────────────────────────
 
   setTool(tool: WorkstationTool): void {
+    // Drawing a measurement or note makes that kind visible again.
+    if (tool === 'arrow' && !this.state.showAnnotations) this.setAnnotationVisibility({ annotations: true });
+    else if (MEASURING_TOOLS.has(tool) && !this.state.showMeasurements) this.setAnnotationVisibility({ measurements: true });
     this.setState({ tool });
     this.gridRenderer?.setTool(tool);
     for (const runtime of this.runtime.values()) runtime.volumeRenderer?.setTool(volumeToolFor(tool));
@@ -820,10 +929,28 @@ export class WorkstationSession {
   }
 
   private applyReferenceLines(): void {
+    for (const runtime of this.runtime.values()) runtime.volumeRenderer?.setCrosshairsVisible?.(this.state.referenceLines);
     const renderer = this.gridRenderer;
     if (!renderer) return;
     const active = this.activeCell;
     renderer.setReferenceLines(this.state.referenceLines && active.mode === '2d' ? active.id : undefined);
+  }
+
+  /** Shows or hides measurements and arrow notes without deleting them. */
+  setAnnotationVisibility(patch: { measurements?: boolean; annotations?: boolean }): void {
+    const showMeasurements = patch.measurements ?? this.state.showMeasurements;
+    const showAnnotations = patch.annotations ?? this.state.showAnnotations;
+    this.setState({ showMeasurements, showAnnotations });
+    this.gridRenderer?.setAnnotationVisibility({ measurements: showMeasurements, annotations: showAnnotations });
+  }
+
+  setCineLoop(loop: boolean): void {
+    this.setState({ cineLoop: loop });
+  }
+
+  /** Restores the view of every displayed viewport (measurements are kept). */
+  resetAll(): void {
+    for (const cell of this.state.cells) if (cell.phase === 'displayed') this.resetView(cell.id);
   }
 
   setOverlay(enabled: boolean): void {
@@ -861,13 +988,57 @@ export class WorkstationSession {
     }
     if (this.cineTimer) return;
     this.cineTimer = setInterval(() => {
-      for (const cell of this.state.cells) if (cell.playing && cell.phase === 'displayed') this.scrollBy(1, cell.id, true);
+      for (const cell of this.state.cells) {
+        if (!cell.playing || cell.phase !== 'displayed') continue;
+        if (!this.state.cineLoop && this.atLastImage(cell)) {
+          this.toggleCine(cell.id, false);
+          continue;
+        }
+        this.scrollBy(1, cell.id, true);
+      }
     }, 1000 / this.state.cineFps);
+  }
+
+  private atLastImage(cell: CellState): boolean {
+    const view = this.views[cell.id];
+    if (cell.mode === '2d') return Boolean(view?.status && view.status.imageIndex >= view.status.imageCount - 1);
+    const plane = this.activePlane(cell.id);
+    const status = view?.volumeStatus?.planes[plane];
+    return Boolean(status && status.index >= status.count - 1);
   }
 
   private stopCineTimer(): void {
     if (this.cineTimer) clearInterval(this.cineTimer);
     this.cineTimer = undefined;
+  }
+
+  /**
+   * A PNG data URL of the middle image of a series, for the series list. Rendered one
+   * at a time and kept for the session.
+   */
+  getThumbnail(seriesInstanceUid: string, size = 128): Promise<string | undefined> {
+    const cached = this.thumbnails.get(seriesInstanceUid);
+    if (cached) return cached;
+    const series = this.findSeries(seriesInstanceUid);
+    if (!series || this.disposed) return Promise.resolve(undefined);
+    const frames = series.instances.flatMap((instance) =>
+      instance.header.numberOfFrames > 1
+        ? Array.from({ length: instance.header.numberOfFrames }, (_, frame) => ({ instance, frame: frame + 1 }))
+        : [{ instance, frame: undefined as number | undefined }],
+    );
+    const middle = frames[Math.floor(frames.length / 2)];
+    if (!middle) return Promise.resolve(undefined);
+    const studies = this.studies;
+    const task = this.thumbnailQueue
+      .then(async () => {
+        if (this.disposed || this.studies !== studies) return undefined;
+        const renderer = await this.getGridRenderer();
+        return renderer.renderThumbnail(middle.instance.file, middle.frame, size);
+      })
+      .catch(() => undefined);
+    this.thumbnailQueue = task;
+    this.thumbnails.set(seriesInstanceUid, task);
+    return task;
   }
 
   // ── Queries ────────────────────────────────────────────────────────────
@@ -910,24 +1081,12 @@ export class WorkstationSession {
   }
 }
 
-/** Panes shown by an MPR arrangement, primary pane first. */
-export function visibleViews(layout: MprLayout): VolumeView[] {
-  switch (layout) {
-    case 'axial':
-    case 'sagittal':
-    case 'coronal':
-    case 'volume':
-      return [layout];
-    case 'planes':
-      return ['axial', 'sagittal', 'coronal'];
-    case 'volumePrimary':
-      return ['volume', 'axial', 'sagittal', 'coronal'];
-    case 'axialPrimary':
-    case 'grid':
-    default:
-      return ['axial', 'sagittal', 'coronal', 'volume'];
-  }
+/** Panes shown by an MPR arrangement, in slot order (primary pane first). */
+export function visibleViews(layout: MprLayout, order: readonly VolumeView[] = VOLUME_VIEWS): VolumeView[] {
+  return order.slice(0, MPR_SLOTS[layout] ?? 4);
 }
+
+const MEASURING_TOOLS = new Set<WorkstationTool>(['length', 'angle', 'cobbAngle', 'bidirectional', 'rectangleRoi', 'ellipticalRoi', 'probe']);
 
 function sameCellStatus(a: CellStatus | undefined, b: CellStatus | undefined): boolean {
   if (a === b) return true;

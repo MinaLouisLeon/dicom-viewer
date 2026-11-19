@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { formatPersonName, orientationMarkers, readImageInfo } from '../src/workstation/imageInfo';
-import { GRID_LAYOUTS, clampGrid, parseGrid } from '../src/workstation/layouts';
+import { GRID_LAYOUTS, cellCount, clampGrid, parseGrid } from '../src/workstation/layouts';
 import { formatTag, isPrivateTag, lookupTag, normalizeTag } from '../src/workstation/tagDictionary';
 import { countTagNodes, filterTagNodes, readTagMap, tagNodesToJson } from '../src/workstation/tagMap';
 import { DEFAULT_WINDOW_PRESETS, computeAutoWindow, presetApplies } from '../src/workstation/windowPresets';
@@ -61,6 +61,11 @@ describe('layouts', () => {
     expect(parseGrid('2x3')).toEqual({ rows: 2, columns: 3 });
     expect(parseGrid('9x9')).toEqual({ rows: 4, columns: 4 });
     expect(parseGrid('nope')).toBeUndefined();
+    expect(parseGrid('2x2-top')).toEqual({ rows: 2, columns: 2, primary: 'top' });
+    expect(clampGrid({ rows: 1, columns: 3, primary: 'top' })).toEqual({ rows: 1, columns: 3 });
+    expect(cellCount({ rows: 2, columns: 2, primary: 'top' })).toBe(3);
+    expect(cellCount({ rows: 3, columns: 2, primary: 'left' })).toBe(4);
+    expect(cellCount({ rows: 2, columns: 3 })).toBe(6);
     expect(clampGrid({ rows: 0, columns: 2.6 })).toEqual({ rows: 1, columns: 3 });
     expect(GRID_LAYOUTS.length).toBeGreaterThan(5);
   });

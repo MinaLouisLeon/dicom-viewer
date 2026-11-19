@@ -77,6 +77,8 @@ export function createFakeGridRenderer(): { renderer: FakeGridRenderer; createGr
     setReferenceLines: vi.fn(),
     clearMeasurements: vi.fn(),
     measurementCount: () => 0,
+    setAnnotationVisibility: vi.fn(),
+    renderThumbnail: vi.fn(async () => 'data:image/png;base64,AAAA'),
     destroy: vi.fn(),
   };
   return {

@@ -1,5 +1,6 @@
 import { defaultLabels, type DicomViewerLabels } from '../i18n/labels';
 import type { WorkstationTool } from './gridRenderer';
+import type { SlabMode } from '../core/renderer';
 import type { MprLayout } from './layouts';
 
 /**
@@ -20,7 +21,7 @@ export interface WorkstationLabels extends Omit<DicomViewerLabels, 'tools'> {
   layoutSelector: string;
   gridLayouts: string;
   mprLayouts: string;
-  gridLayoutName: (rows: number, columns: number) => string;
+  gridLayoutName: (rows: number, columns: number, primary?: 'top' | 'left') => string;
   mprLayoutNames: Record<MprLayout, string>;
   cellMode: string;
   modes: { '2d': string; '3d': string };
@@ -29,6 +30,25 @@ export interface WorkstationLabels extends Omit<DicomViewerLabels, 'tools'> {
   tools: Record<WorkstationTool, string>;
   toolShortcuts: Partial<Record<WorkstationTool, string>>;
   clearMeasurements: string;
+  /** Tabs at the top of the side menu. */
+  toolTabs: { navigate: string; contrast: string; measure: string };
+  showMeasurements: string;
+  showAnnotations: string;
+  mprOrthogonal: string;
+  mprOrthogonalHint: string;
+  slab: string;
+  slabModes: Record<SlabMode, string>;
+  slabThickness: string;
+  /** Corner text of a 3D pane, for example `AVG · 9.6 mm`. */
+  slabValue: (mode: SlabMode, thickness: number) => string;
+  volumeStyle: string;
+  volumePresets: Record<string, string>;
+  /** Accessible name of a pane's plane picker. */
+  choosePlane: (slot: number) => string;
+  /** Tooltip of a pane's view-direction badge. */
+  viewedFrom: (direction: string) => string;
+  cineLoop: string;
+  resetAll: string;
 
   // Brightness and contrast
   windowGroup: string;
@@ -117,16 +137,14 @@ export const defaultWorkstationLabels: WorkstationLabels = {
   layoutSelector: 'Layout',
   gridLayouts: 'Viewport grid',
   mprLayouts: '3D arrangement',
-  gridLayoutName: (rows, columns) => `${rows} × ${columns}`,
+  gridLayoutName: (rows, columns, primary) =>
+    primary === 'top' ? `1 large on top + ${columns}` : primary === 'left' ? `1 large on the left + ${rows}` : `${rows} × ${columns}`,
   mprLayoutNames: {
-    grid: '2 × 2 (planes + 3D)',
-    axialPrimary: 'Axial large',
-    volumePrimary: '3D large',
-    planes: '3 planes',
-    axial: 'Axial only',
-    sagittal: 'Sagittal only',
-    coronal: 'Coronal only',
-    volume: '3D only',
+    grid: '2 × 2',
+    primaryTop: '1 large on top + 2',
+    primaryLeft: '1 large on the left + 3',
+    row: '3 side by side',
+    single: 'Single pane',
   },
   cellMode: 'Viewport mode',
   modes: { '2d': '2D', '3d': '3D / MPR' },
@@ -151,6 +169,28 @@ export const defaultWorkstationLabels: WorkstationLabels = {
   },
   toolShortcuts: { windowLevel: 'W', pan: 'P', zoom: 'Z', scroll: 'S', crosshairs: 'C', length: 'L', angle: 'A', magnify: 'M', eraser: 'E' },
   clearMeasurements: 'Clear measurements',
+  toolTabs: { navigate: 'Navigate', contrast: 'Contrast', measure: 'Measure' },
+  showMeasurements: 'Measurements',
+  showAnnotations: 'Annotations',
+  mprOrthogonal: 'Orthogonal planes',
+  mprOrthogonalHint: 'Turn off to tilt the planes by dragging the crosshair handles.',
+  slab: 'Slab',
+  slabModes: { none: 'Off', avg: 'AVG', mip: 'MIP', minip: 'MinIP' },
+  slabThickness: 'Thickness',
+  slabValue: (mode, thickness) => (mode === 'none' ? '' : `${mode === 'avg' ? 'AVG' : mode === 'mip' ? 'MIP' : 'MinIP'} · ${thickness.toFixed(1)} mm`),
+  volumeStyle: '3D style',
+  volumePresets: {
+    'CT-Bone': 'Bone',
+    'CT-Soft-Tissue': 'Soft tissue',
+    'CT-MIP': 'MIP (grey)',
+    'CT-Lung': 'Lung',
+    'CT-AAA': 'Angio',
+    'CT-Muscle': 'Muscle',
+  },
+  choosePlane: (slot) => `Plane of pane ${slot}`,
+  viewedFrom: (direction) => `Viewed from ${direction}`,
+  cineLoop: 'Loop',
+  resetAll: 'Reset',
 
   windowGroup: 'Brightness & contrast',
   presets: {
@@ -196,7 +236,7 @@ export const defaultWorkstationLabels: WorkstationLabels = {
   syncScroll: 'Link scrolling',
   syncZoomPan: 'Link zoom & pan',
   syncWindowLevel: 'Link window/level',
-  referenceLines: 'Reference lines',
+  referenceLines: 'Cross-references',
   overlay: 'Image information',
   patientInfo: 'Show patient details',
   fullscreen: 'Full screen',
@@ -257,6 +297,9 @@ export function resolveWorkstationLabels(overrides?: Partial<WorkstationLabels>)
     modes: { ...base.modes, ...overrides.modes },
     presets: { ...base.presets, ...overrides.presets },
     presetHint: { ...base.presetHint, ...overrides.presetHint },
+    toolTabs: { ...base.toolTabs, ...overrides.toolTabs },
+    slabModes: { ...base.slabModes, ...overrides.slabModes },
+    volumePresets: { ...base.volumePresets, ...overrides.volumePresets },
     mapColumns: { ...base.mapColumns, ...overrides.mapColumns },
   };
 }

@@ -70,7 +70,6 @@ describe('WorkstationSession', () => {
     attachAll();
     await vi.waitFor(() => expect(session.getState().cells.filter((cell) => cell.phase === 'displayed')).toHaveLength(3));
     expect(session.getState().cells[0]!.id).toBe(first.id);
-    session.setActiveCell(session.getState().cells[2]!.id);
     session.setGrid({ rows: 1, columns: 1 });
     expect(session.getState().cells).toHaveLength(1);
     expect(session.getState().activeCellId).toBe(first.id);
@@ -175,9 +174,24 @@ describe('WorkstationSession', () => {
     expect(volume.setTool).toHaveBeenLastCalledWith('crosshairs');
     session.setTool('pan');
     expect(volume.setTool).toHaveBeenLastCalledWith('pan');
-    session.setMprLayout('sagittal');
-    expect(session.getState().cells[0]!.mprLayout).toBe('sagittal');
+    expect(volume.setSlab).toHaveBeenCalledWith({ mode: 'avg', thickness: 10 });
+    expect(volume.setOblique).toHaveBeenCalledWith(false);
+    expect(volume.setVolumePreset).toHaveBeenCalledWith('CT-Bone');
+    expect(volume.setCrosshairsVisible).toHaveBeenCalledWith(true);
+    session.setMprLayout('single');
+    session.setMprView(0, 'sagittal');
+    expect(session.getState().cells[0]).toMatchObject({ mprLayout: 'single' });
+    expect(session.getState().cells[0]!.mprViews).toEqual(['sagittal', 'axial', 'coronal', 'volume']);
     expect(session.getViews()[cellId]!.activeView).toBe('sagittal');
+    session.setSlab({ mode: 'mip', thickness: 200 });
+    expect(volume.setSlab).toHaveBeenLastCalledWith({ mode: 'mip', thickness: 100 });
+    session.setOblique(true);
+    expect(volume.setOblique).toHaveBeenLastCalledWith(true);
+    session.setVolumePreset('CT-MIP');
+    expect(session.getState().cells[0]!.volumePreset).toBe('CT-MIP');
+    expect(volume.setVolumePreset).toHaveBeenLastCalledWith('CT-MIP');
+    session.setReferenceLines(false);
+    expect(volume.setCrosshairsVisible).toHaveBeenLastCalledWith(false);
     expect(session.getCellImage(cellId)?.instance).toBeDefined();
   });
 
@@ -219,12 +233,71 @@ describe('WorkstationSession', () => {
   });
 });
 
+describe('WorkstationSession: viewer options', () => {
+  it('builds grids with a large primary cell and keeps the active cell when shrinking', async () => {
+    const { session, attachAll } = setup({ initialGrid: { rows: 2, columns: 2 } });
+    attachAll();
+    await session.openFiles(allFiles());
+    const third = session.getState().cells[2]!;
+    session.setActiveCell(third.id);
+    session.setGrid({ rows: 2, columns: 2, primary: 'top' });
+    expect(session.getState().cells).toHaveLength(3);
+    session.setGrid({ rows: 1, columns: 1 });
+    expect(session.getState().cells.map((cell) => cell.id)).toEqual([third.id]);
+    expect(session.getState().cells[0]!.seriesInstanceUid).toBe(third.seriesInstanceUid);
+  });
+
+  it('shows and hides measurements and notes, and reveals them when drawing', async () => {
+    const { session, grid } = setup();
+    await session.openFiles(stackFiles());
+    session.setAnnotationVisibility({ measurements: false });
+    expect(grid.setAnnotationVisibility).toHaveBeenLastCalledWith({ measurements: false, annotations: true });
+    session.setAnnotationVisibility({ annotations: false });
+    expect(session.getState()).toMatchObject({ showMeasurements: false, showAnnotations: false });
+    session.setTool('length');
+    expect(session.getState().showMeasurements).toBe(true);
+    session.setTool('arrow');
+    expect(session.getState().showAnnotations).toBe(true);
+  });
+
+  it('stops cine at the last image when looping is off', async () => {
+    vi.useFakeTimers();
+    const { session } = setup({ cineFps: 20 });
+    await session.openFiles(stackFiles());
+    const cellId = session.getState().activeCellId;
+    session.setCineLoop(false);
+    session.toggleCine();
+    vi.advanceTimersByTime(2000);
+    expect(session.getViews()[cellId]!.status?.imageIndex).toBe(11);
+    expect(session.getState().cells[0]!.playing).toBe(false);
+  });
+
+  it('resets every displayed viewport', async () => {
+    const { session, grid, attachAll } = setup({ initialGrid: { rows: 1, columns: 2 } });
+    attachAll();
+    await session.openFiles(allFiles());
+    session.resetAll();
+    expect(grid.resetView).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders each series thumbnail once', async () => {
+    const { session, grid } = setup();
+    await session.openFiles(stackFiles());
+    const uid = session.getState().studies[0]!.series[0]!.seriesInstanceUid;
+    await expect(session.getThumbnail(uid)).resolves.toMatch(/^data:image\/png/);
+    await session.getThumbnail(uid);
+    expect(grid.renderThumbnail).toHaveBeenCalledTimes(1);
+    expect(await session.getThumbnail('missing')).toBeUndefined();
+  });
+});
+
 describe('helpers', () => {
   it('maps tools and MPR arrangements', () => {
     expect(volumeToolFor('windowLevel')).toBe('windowLevel');
     expect(volumeToolFor('angle')).toBe('crosshairs');
     expect(visibleViews('grid')).toEqual(['axial', 'sagittal', 'coronal', 'volume']);
-    expect(visibleViews('planes')).toEqual(['axial', 'sagittal', 'coronal']);
-    expect(visibleViews('volume')).toEqual(['volume']);
+    expect(visibleViews('row')).toEqual(['axial', 'sagittal', 'coronal']);
+    expect(visibleViews('primaryTop', ['coronal', 'axial', 'sagittal', 'volume'])).toEqual(['coronal', 'axial', 'sagittal']);
+    expect(visibleViews('single', ['volume', 'axial', 'sagittal', 'coronal'])).toEqual(['volume']);
   });
 });

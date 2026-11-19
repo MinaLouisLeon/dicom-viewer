@@ -1,9 +1,12 @@
-import { useEffect, useId, useState, type ReactElement, type ReactNode } from 'react';
+import { useEffect, useId, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+
+import { VOLUME_PRESETS } from '../core/renderer';
+import type { SeriesSummary } from '../core/studyModel';
 
 import { useWorkstation } from './context';
 import { MEASUREMENT_TOOLS, type WorkstationTool } from './gridRenderer';
 import { Icon, TOOL_ICONS, type IconName } from './icons';
-import { GRID_LAYOUTS, MPR_LAYOUTS, gridId, type GridLayout, type MprLayout } from './layouts';
+import { GRID_LAYOUTS, MPR_LAYOUTS, MPR_SLOTS, cellCount, gridId, sameGrid, type GridLayout, type MprLayout } from './layouts';
 import { presetApplies } from './windowPresets';
 
 /** A labelled button with an icon, used in toolbars, popovers and the side menu. */
@@ -86,6 +89,58 @@ export function FileControls(): ReactElement | null {
 
 export const SERIES_DRAG_TYPE = 'application/x-mihawk-series';
 
+/** Real image thumbnail of a series, with the modality as a placeholder while it renders. */
+export function SeriesThumbnail({ series }: { series: SeriesSummary }): ReactElement {
+  const { session } = useWorkstation();
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    let live = true;
+    void session.getThumbnail(series.seriesInstanceUid).then((value) => {
+      if (live) setUrl(value);
+    });
+    return () => {
+      live = false;
+    };
+  }, [session, series.seriesInstanceUid]);
+  return (
+    <span className="mihawk-ws-series-thumb" aria-hidden="true">
+      {url ? <img src={url} alt="" draggable={false} /> : series.modality ?? 'IMG'}
+    </span>
+  );
+}
+
+/** Horizontal strip of series thumbnails under the viewer (phones and tablets). */
+export function SeriesStrip(): ReactElement | null {
+  const { session, state, labels } = useWorkstation();
+  if (state.studies.length === 0) return null;
+  const activeUid = state.cells.find((cell) => cell.id === state.activeCellId)?.seriesInstanceUid;
+  const series = state.studies.flatMap((study) => study.series);
+  return (
+    <nav className="mihawk-ws-strip" aria-label={labels.seriesList} data-testid="mihawk-ws-strip">
+      {series.map((item) => {
+        const name =
+          labels.seriesLabel({ number: item.seriesNumber, description: item.description, modality: item.modality }) ||
+          labels.untitledSeries;
+        return (
+          <button
+            key={item.seriesInstanceUid}
+            type="button"
+            className="mihawk-ws-strip-item"
+            aria-pressed={item.seriesInstanceUid === activeUid}
+            aria-label={`${name}, ${labels.imageCount(item.imageCount)}`}
+            title={name}
+            onClick={() => void session.loadSeries(item.seriesInstanceUid)}
+          >
+            <SeriesThumbnail series={item} />
+            <span className="mihawk-ws-strip-count">{item.imageCount}</span>
+            {item.volume.supported && <span className="mihawk-ws-strip-badge">{labels.volumeBadge}</span>}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function SeriesList(): ReactElement | null {
   const { session, state, labels, afterAction, size } = useWorkstation();
   const headingId = useId();
@@ -127,9 +182,7 @@ export function SeriesList(): ReactElement | null {
                       afterAction();
                     }}
                   >
-                    <span className="mihawk-ws-series-thumb" aria-hidden="true">
-                      {series.modality ?? 'IMG'}
-                    </span>
+                    <SeriesThumbnail series={series} />
                     <span className="mihawk-ws-series-text">
                       <span className="mihawk-ws-series-name">
                         {labels.seriesLabel({ number: series.seriesNumber, description: series.description }) ||
@@ -155,96 +208,188 @@ export function SeriesList(): ReactElement | null {
 // ── Layout ───────────────────────────────────────────────────────────────
 
 function GridPreview({ grid }: { grid: GridLayout }): ReactElement {
+  const count = cellCount(grid);
   return (
     <span
       className="mihawk-ws-grid-preview"
       aria-hidden="true"
       style={{ gridTemplateColumns: `repeat(${grid.columns}, 1fr)`, gridTemplateRows: `repeat(${grid.rows}, 1fr)` }}
     >
-      {Array.from({ length: grid.rows * grid.columns }, (_, index) => (
-        <span key={index} />
+      {Array.from({ length: count }, (_, index) => (
+        <span key={index} style={index === 0 ? primaryCellStyle(grid) : undefined} />
       ))}
     </span>
   );
 }
 
+/** Grid placement of the first cell of a grid with a primary cell. */
+export function primaryCellStyle(grid: GridLayout): CSSProperties | undefined {
+  if (grid.primary === 'top') return { gridColumn: '1 / -1' };
+  if (grid.primary === 'left') return { gridRow: '1 / -1' };
+  return undefined;
+}
+
 function MprPreview({ layout }: { layout: MprLayout }): ReactElement {
   return (
     <span className="mihawk-ws-mpr-preview" data-mpr-layout={layout} aria-hidden="true">
-      <span data-view="axial" />
-      <span data-view="sagittal" />
-      <span data-view="coronal" />
-      <span data-view="volume" />
+      {Array.from({ length: MPR_SLOTS[layout] }, (_, slot) => (
+        <span key={slot} style={{ gridArea: `s${slot + 1}` }} />
+      ))}
     </span>
   );
 }
 
-export function LayoutControls(): ReactElement {
-  const { session, state, labels, features, afterAction } = useWorkstation();
+function Segmented<T extends string>({ label, value, options, onChange, testId }: {
+  label: string;
+  value: T;
+  options: readonly { value: T; label: string; disabled?: boolean; title?: string }[];
+  onChange: (value: T) => void;
+  testId?: string;
+}): ReactElement {
+  return (
+    <div className="mihawk-ws-segmented" role="radiogroup" aria-label={label}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={value === option.value}
+          disabled={option.disabled}
+          title={option.title}
+          data-testid={testId ? `${testId}-${option.value}` : undefined}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 2D or MPR for the active viewport. */
+export function ModeSwitch(): ReactElement | null {
+  const { session, labels, features } = useWorkstation();
   const { cell, series } = useActiveCell();
-  const canVolume = features.mpr && session.canShowVolume(cell.seriesInstanceUid);
+  if (!features.mpr) return null;
+  const canVolume = session.canShowVolume(cell.seriesInstanceUid);
   const volumeReason =
     series && !series.volume.supported ? labels.volumeUnsupportedReasons[series.volume.reason] : undefined;
   return (
-    <div className="mihawk-ws-layout-controls">
+    <div className="mihawk-ws-mode-switch">
+      <Segmented
+        label={labels.cellMode}
+        value={cell.mode}
+        testId="mihawk-ws-mode"
+        options={[
+          { value: '2d', label: labels.modes['2d'] },
+          { value: '3d', label: labels.modes['3d'], disabled: !canVolume && !!cell.seriesInstanceUid, title: volumeReason },
+        ]}
+        onChange={(mode) => void session.setCellMode(mode)}
+      />
+      {volumeReason && <p className="mihawk-ws-hint">{volumeReason}</p>}
+    </div>
+  );
+}
+
+/** Slab, orthogonal planes and 3D style of the active 3D viewport. */
+export function MprSettings(): ReactElement | null {
+  const { session, labels } = useWorkstation();
+  const { cell } = useActiveCell();
+  const thicknessId = useId();
+  if (cell.mode !== '3d') return null;
+  return (
+    <div className="mihawk-ws-mpr-settings">
+      <Section title={labels.slab}>
+        <Segmented
+          label={labels.slab}
+          value={cell.slab.mode}
+          testId="mihawk-ws-slab"
+          options={(['none', 'avg', 'mip', 'minip'] as const).map((mode) => ({ value: mode, label: labels.slabModes[mode] }))}
+          onChange={(mode) => session.setSlab({ ...cell.slab, mode })}
+        />
+        <label className="mihawk-ws-fps" htmlFor={thicknessId}>
+          <span>{labels.slabThickness}</span>
+          <input
+            id={thicknessId}
+            type="range"
+            min={1}
+            max={50}
+            step={0.5}
+            value={cell.slab.thickness}
+            disabled={cell.slab.mode === 'none'}
+            aria-valuetext={`${cell.slab.thickness} mm`}
+            onChange={(event) => session.setSlab({ ...cell.slab, thickness: Number(event.currentTarget.value) })}
+          />
+          <output>{cell.slab.thickness.toFixed(1)} mm</output>
+        </label>
+      </Section>
+      <Toggle
+        icon="crosshairs"
+        label={labels.mprOrthogonal}
+        checked={!cell.oblique}
+        onChange={(orthogonal) => session.setOblique(!orthogonal)}
+      />
+      {cell.oblique && <p className="mihawk-ws-hint">{labels.mprOrthogonalHint}</p>}
+      <label className="mihawk-ws-select">
+        <span>{labels.volumeStyle}</span>
+        <select
+          value={cell.volumePreset}
+          data-testid="mihawk-ws-volume-preset"
+          onChange={(event) => session.setVolumePreset(event.currentTarget.value)}
+        >
+          {VOLUME_PRESETS.map((preset) => (
+            <option key={preset} value={preset}>
+              {labels.volumePresets[preset] ?? preset}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+/** Grid and MPR arrangement icons. */
+export function LayoutPicker(): ReactElement {
+  const { session, state, labels, features, afterAction } = useWorkstation();
+  const { cell } = useActiveCell();
+  return (
+    <div className="mihawk-ws-layout-picker">
       {features.layouts && (
-        <Section title={labels.gridLayouts}>
-          <div className="mihawk-ws-grid-options" role="group" aria-label={labels.gridLayouts}>
-            {GRID_LAYOUTS.map((grid) => {
-              const selected = grid.rows === state.grid.rows && grid.columns === state.grid.columns;
-              const name = labels.gridLayoutName(grid.rows, grid.columns);
-              return (
-                <button
-                  key={gridId(grid)}
-                  type="button"
-                  className="mihawk-ws-grid-option"
-                  aria-pressed={selected}
-                  aria-label={name}
-                  title={name}
-                  data-testid={`mihawk-ws-grid-${gridId(grid)}`}
-                  onClick={() => {
-                    session.setGrid(grid);
-                    afterAction();
-                  }}
-                >
-                  <GridPreview grid={grid} />
-                </button>
-              );
-            })}
-          </div>
-        </Section>
-      )}
-      {features.mpr && (
-        <Section title={labels.cellMode}>
-          <div className="mihawk-ws-row" role="group" aria-label={labels.cellMode}>
-            <ActionButton
-              label={labels.modes['2d']}
-              pressed={cell.mode === '2d'}
-              onClick={() => void session.setCellMode('2d')}
-              testId="mihawk-ws-mode-2d"
-            />
-            <ActionButton
-              icon="cube"
-              label={labels.modes['3d']}
-              pressed={cell.mode === '3d'}
-              disabled={!canVolume && !!cell.seriesInstanceUid}
-              title={volumeReason}
-              onClick={() => void session.setCellMode('3d')}
-              testId="mihawk-ws-mode-3d"
-            />
-          </div>
-          {volumeReason && <p className="mihawk-ws-hint">{volumeReason}</p>}
-        </Section>
+        <div className="mihawk-ws-grid-options" role="group" aria-label={labels.gridLayouts}>
+          {GRID_LAYOUTS.map((grid) => {
+            const name = labels.gridLayoutName(grid.rows, grid.columns, grid.primary);
+            return (
+              <button
+                key={gridId(grid)}
+                type="button"
+                className="mihawk-ws-grid-option"
+                aria-pressed={sameGrid(grid, state.grid)}
+                aria-label={name}
+                title={name}
+                data-testid={`mihawk-ws-grid-${gridId(grid)}`}
+                onClick={() => {
+                  session.setGrid(grid);
+                  afterAction();
+                }}
+              >
+                <GridPreview grid={grid} />
+              </button>
+            );
+          })}
+        </div>
       )}
       {features.mpr && cell.mode === '3d' && (
-        <Section title={labels.mprLayouts}>
-          <div className="mihawk-ws-mpr-options" role="group" aria-label={labels.mprLayouts}>
+        <>
+          <h4 className="mihawk-ws-subtitle">{labels.mprLayouts}</h4>
+          <div className="mihawk-ws-grid-options" role="group" aria-label={labels.mprLayouts}>
             {MPR_LAYOUTS.map((layout) => (
               <button
                 key={layout}
                 type="button"
-                className="mihawk-ws-mpr-option"
+                className="mihawk-ws-grid-option"
                 aria-pressed={cell.mprLayout === layout}
+                aria-label={labels.mprLayoutNames[layout]}
+                title={labels.mprLayoutNames[layout]}
                 data-testid={`mihawk-ws-mpr-${layout}`}
                 onClick={() => {
                   session.setMprLayout(layout);
@@ -252,12 +397,29 @@ export function LayoutControls(): ReactElement {
                 }}
               >
                 <MprPreview layout={layout} />
-                <span>{labels.mprLayoutNames[layout]}</span>
               </button>
             ))}
           </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Desktop layout panel: grid, mode, arrangement and MPR settings. */
+export function LayoutControls(): ReactElement {
+  const { labels, features } = useWorkstation();
+  return (
+    <div className="mihawk-ws-layout-controls">
+      <Section title={labels.layoutSelector}>
+        <LayoutPicker />
+      </Section>
+      {features.mpr && (
+        <Section title={labels.cellMode}>
+          <ModeSwitch />
         </Section>
       )}
+      <MprSettings />
     </div>
   );
 }
@@ -338,6 +500,13 @@ export function WindowControls(): ReactElement {
   }, [cell.id, cell.presetId]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="mihawk-ws-window-controls">
+      <Toggle
+        icon="invert"
+        label={labels.invert}
+        checked={Boolean(cell.mode === '2d' ? view?.status?.invert : view?.volumeStatus?.invert)}
+        disabled={!displayed}
+        onChange={() => session.toggleInvert()}
+      />
       <div className="mihawk-ws-preset-grid" role="group" aria-label={labels.windowGroup}>
         {session.windowPresets.map((preset) => {
           const applies = presetApplies(preset, series?.modality);
@@ -449,6 +618,7 @@ export function CineControls(): ReactElement {
         testId="mihawk-ws-cine-toggle"
         onClick={() => session.toggleCine()}
       />
+      <Toggle icon="reset" label={labels.cineLoop} checked={state.cineLoop} onChange={(loop) => session.setCineLoop(loop)} />
       <label className="mihawk-ws-fps" htmlFor={id}>
         <span>{labels.framesPerSecond}</span>
         <input
@@ -478,16 +648,34 @@ function Toggle({ label, checked, onChange, icon, disabled }: { label: string; c
   );
 }
 
-export function ViewControls(): ReactElement {
+export function SyncControls(): ReactElement | null {
+  const { session, state, labels, features } = useWorkstation();
+  if (!features.sync) return null;
+  return (
+    <div role="group" aria-label={labels.syncGroup}>
+      <Toggle icon="scroll" label={labels.syncScroll} checked={state.sync.scroll} onChange={(scroll) => session.setSync({ scroll })} />
+      <Toggle icon="zoom" label={labels.syncZoomPan} checked={state.sync.zoomPan} onChange={(zoomPan) => session.setSync({ zoomPan })} />
+      <Toggle icon="contrast" label={labels.syncWindowLevel} checked={state.sync.windowLevel} onChange={(windowLevel) => session.setSync({ windowLevel })} />
+    </div>
+  );
+}
+
+export function ViewControls({ withSync = true }: { withSync?: boolean }): ReactElement {
   const { session, state, labels, features, allowPatientInfo } = useWorkstation();
   return (
     <div className="mihawk-ws-view-controls">
-      {features.sync && (
+      {withSync && features.sync && (
         <div role="group" aria-label={labels.syncGroup}>
           <Toggle icon="scroll" label={labels.syncScroll} checked={state.sync.scroll} onChange={(scroll) => session.setSync({ scroll })} />
           <Toggle icon="zoom" label={labels.syncZoomPan} checked={state.sync.zoomPan} onChange={(zoomPan) => session.setSync({ zoomPan })} />
           <Toggle icon="contrast" label={labels.syncWindowLevel} checked={state.sync.windowLevel} onChange={(windowLevel) => session.setSync({ windowLevel })} />
         </div>
+      )}
+      {features.measurements && (
+        <>
+          <Toggle icon="ruler" label={labels.showMeasurements} checked={state.showMeasurements} onChange={(measurements) => session.setAnnotationVisibility({ measurements })} />
+          <Toggle icon="arrow" label={labels.showAnnotations} checked={state.showAnnotations} onChange={(annotations) => session.setAnnotationVisibility({ annotations })} />
+        </>
       )}
       {features.referenceLines && (
         <Toggle icon="lines" label={labels.referenceLines} checked={state.referenceLines} onChange={(value) => session.setReferenceLines(value)} />
@@ -534,63 +722,78 @@ export function OutputControls(): ReactElement {
   );
 }
 
-/** Every option of the app, grouped, for the phone and tablet side menu. */
+type MenuTab = 'navigate' | 'contrast' | 'measure';
+
+/** Every option of the app, for the phone and tablet side menu. */
 export function AllControls(): ReactElement {
-  const { labels, features, state } = useWorkstation();
+  const { session, labels, features, state } = useWorkstation();
+  const [tab, setTab] = useState<MenuTab>('navigate');
   const hasStudies = state.studies.length > 0;
+  const tabs: { id: MenuTab; icon: IconName; label: string }[] = [
+    { id: 'navigate', icon: 'layers', label: labels.toolTabs.navigate },
+    ...(features.presets ? [{ id: 'contrast' as const, icon: 'sun' as const, label: labels.toolTabs.contrast }] : []),
+    ...(features.measurements ? [{ id: 'measure' as const, icon: 'ruler' as const, label: labels.toolTabs.measure }] : []),
+  ];
+  const tabPanelId = useId();
   return (
     <div className="mihawk-ws-all-controls">
-      <MenuGroup title={labels.fileGroup} icon="file" open>
-        <FileControls />
-      </MenuGroup>
-      {features.seriesPanel && hasStudies && (
-        <MenuGroup title={labels.studiesHeading} icon="series" open>
-          <SeriesList />
-        </MenuGroup>
-      )}
-      {(features.layouts || features.mpr) && (
-        <MenuGroup title={labels.layoutSelector} icon="layout">
-          <LayoutControls />
-        </MenuGroup>
-      )}
-      <MenuGroup title={labels.navigationTools} icon="tool">
-        <NavigationTools />
-      </MenuGroup>
-      {features.measurements && (
-        <MenuGroup title={labels.measurementTools} icon="ruler">
-          <MeasurementTools />
-        </MenuGroup>
-      )}
-      {features.presets && (
-        <MenuGroup title={labels.windowGroup} icon="sun">
-          <WindowControls />
-        </MenuGroup>
-      )}
-      <MenuGroup title={labels.imageGroup} icon="invert">
-        <ImageControls />
-      </MenuGroup>
-      {features.cine && (
-        <MenuGroup title={labels.cine} icon="play">
-          <CineControls />
-        </MenuGroup>
-      )}
-      <MenuGroup title={labels.viewGroup} icon="info">
-        <ViewControls />
-        <OutputControls />
-      </MenuGroup>
-    </div>
-  );
-}
+      <div className="mihawk-ws-menu-scroll">
+        {hasStudies && (
+          <>
+            <div className="mihawk-ws-tool-tabs" role="tablist" aria-label={labels.navigationTools}>
+              {tabs.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === item.id}
+                  aria-controls={tabPanelId}
+                  data-testid={`mihawk-ws-menu-tab-${item.id}`}
+                  onClick={() => setTab(item.id)}
+                >
+                  <Icon name={item.icon} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mihawk-ws-tool-panel" role="tabpanel" id={tabPanelId}>
+              {tab === 'navigate' && (
+                <>
+                  <NavigationTools />
+                  <SyncControls />
+                  {features.cine && <CineControls />}
+                  <ImageControls />
+                </>
+              )}
+              {tab === 'contrast' && <WindowControls />}
+              {tab === 'measure' && <MeasurementTools />}
+            </div>
 
-function MenuGroup({ title, icon, open, children }: { title: string; icon: IconName; open?: boolean; children: ReactNode }): ReactElement {
-  return (
-    <details className="mihawk-ws-menu-group" open={open}>
-      <summary>
-        <Icon name={icon} />
-        <span>{title}</span>
-        <Icon name="chevronDown" size={16} />
-      </summary>
-      <div className="mihawk-ws-menu-group-body">{children}</div>
-    </details>
+            {(features.layouts || features.mpr) && (
+              <Section title={labels.layoutSelector}>
+                <LayoutPicker />
+              </Section>
+            )}
+            <MprSettings />
+            <div className="mihawk-ws-menu-toggles">
+              <ViewControls withSync={false} />
+            </div>
+            <ModeSwitch />
+          </>
+        )}
+        <Section title={labels.fileGroup}>
+          <FileControls />
+          {hasStudies && <OutputControls />}
+        </Section>
+      </div>
+      {hasStudies && (
+        <div className="mihawk-ws-menu-footer">
+          <button type="button" className="mihawk-ws-reset" data-testid="mihawk-ws-reset-all" onClick={() => session.resetAll()}>
+            <Icon name="reset" />
+            <span>{labels.resetAll}</span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

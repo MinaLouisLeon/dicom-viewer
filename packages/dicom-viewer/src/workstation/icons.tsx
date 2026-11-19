@@ -49,6 +49,7 @@ const PATHS = {
   sun: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5',
   wand: 'M5 19L15 9M14 4v2M19 9h2M17 5l1.5-1.5M10 5l1 1M18 13l1 1',
   tool: 'M14 6l4 4-9 9H5v-4zM12 8l4 4',
+  layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5',
 } as const;
 
 export type IconName = keyof typeof PATHS;

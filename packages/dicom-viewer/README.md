@@ -95,13 +95,13 @@ import { DEFAULT_CODEC_BASE_PATH, DicomWorkstation } from '@mihawksolutions/dico
 ```
 
 - **Tabs:** **Viewer** and **Map**. Map is a searchable DICOM tag map of the active image, with nested sequences, copy and JSON export.
-- **Layout selector:** viewport grids from 1 × 1 to 3 × 3, a different series per cell (drag from the series list or pick one for the active cell), and per-cell **3D / MPR** with eight pane arrangements.
+- **Layout selector:** viewport grids from 1 × 1 to 3 × 3 plus "1 large + 2" layouts, a different series per cell (drag from the series list or tap a thumbnail), and per-cell **3D / MPR** with five arrangements, a plane picker per pane, thick slab (AVG/MIP/MinIP), oblique planes, an orientation cube and a 3D style picker.
 - **Brightness & contrast:** **Auto** (from the image's pixel values), **Default** (from the file), and CT presets such as lungs, bones, brain, soft tissue, abdomen, mediastinum and teeth, plus a custom width and level. Keys `1`–`9`.
 - **Measurements:** length, angle, Cobb angle, bidirectional, rectangle and ellipse ROI, probe, arrow note, eraser. Session only.
 - **Image:** invert, rotate, flip, zoom, reset, magnify, cine with adjustable speed.
 - **Linked viewports:** scrolling, zoom/pan and window/level, plus reference lines.
 - **Overlay:** corner information and orientation markers, PNG export, full screen.
-- **Phone and tablet:** below 1024 px of component width the toolbar becomes a side menu that holds every option. `menuMode` forces one presentation.
+- **Phone and tablet:** below 1024 px of component width the toolbar becomes a side menu (from the right) with Navigate, Contrast and Measure tabs, layouts, show/hide switches, a 2D / 3D switch and a Reset button, plus a thumbnail strip under the viewer. `menuMode` forces one presentation.
 - **Host integration:** `features` turns parts off, `windowPresets` replaces the presets, `labels` translates every string, `theme` picks dark, light or auto, and `headerStart` / `headerEnd` hold host controls. The ref handle offers `openFiles`, `loadSeries`, `setGrid`, `setTool`, `applyPreset`, `setTab`, `exportImage`, `resetView`, `cancel`, `clear` and `getState`.
 
 Full reference: `apps/docs/src/content/docs/workstation.md` (published under **Workstation** in the documentation). Theme it with the `--mihawk-ws-*` custom properties; every selector is scoped under `.mihawk-ws`.

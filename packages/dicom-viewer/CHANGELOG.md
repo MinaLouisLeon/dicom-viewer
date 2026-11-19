@@ -12,6 +12,12 @@
 - Added a side menu that holds every option on phones and tablets, sized from the component's own width.
 - Added optional `setWindow` and `setInvert` to the volume renderer interface; the Cornerstone volume renderer implements both.
 - The demo app now renders `<DicomWorkstation />`, with a light and dark theme switch and a multi-series sample.
+- Reorganised the phone and tablet side menu around Navigate, Contrast and Measure tabs, opened from the right, with layout icons, show/hide switches, a 2D / 3D switch and a sticky Reset that restores every viewport.
+- Added a strip of real series thumbnails with image counts under the viewer on phones and tablets; the desktop series list shows the same thumbnails.
+- Added "1 large on top + 2" and "1 large on the left + 2" grids. Shrinking the grid keeps the active viewport.
+- Added MPR arrangements with a plane picker on every pane, thick-slab AVG/MIP/MinIP (AVG 10 mm by default), an orthogonal/oblique switch, view-direction badges and edge markers, an orientation cube and a 3D style picker. Cross-references show in MPR whatever tool is selected and are on by default.
+- Added show/hide switches for measurements and arrow notes, and a cine loop switch.
+- The volume renderer gains optional `setSlab`, `setOblique`, `setVolumePreset` and `setCrosshairsVisible`, and reports slab, oblique, preset and per-view orientation in its status. The crosshairs tool rotates only when `allowRotation` is configured.
 
 ## 0.5.0
 

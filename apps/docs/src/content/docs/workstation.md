@@ -32,13 +32,15 @@ Set up Vite with the `mihawkDicomViewer()` plugin, as described in the [Quicksta
 | Area | Features |
 | --- | --- |
 | Tabs | **Viewer** and **Map**. The Map tab is a searchable DICOM tag map of the image in the active viewport, with nested sequences, a file picker, copy and JSON export. |
-| Layout selector | Viewport grids from 1 × 1 to 3 × 3. Each cell shows its own series; drag a series from the list onto a cell, or select a cell and pick a series. Cells that hold a CT or CBCT volume can switch to **3D / MPR**, with arrangements such as 2 × 2, axial large, 3D large, three planes or a single plane. |
+| Layout selector | Viewport grids from 1 × 1 to 3 × 3, plus "1 large on top + 2" and "1 large on the left + 2". Each cell shows its own series; drag a series from the list onto a cell, or select a cell and tap a series thumbnail. Shrinking the grid keeps the viewport you are working in. Cells that hold a CT or CBCT volume can switch to **3D / MPR**. |
+| 3D / MPR | Five arrangements (2 × 2, 1 large on top + 2, 1 large on the left + 3, three side by side, single pane). Each pane has a plane picker (axial, sagittal, coronal or 3D), a coloured border, a view-direction badge (for example **I** for an axial view seen from the feet) and L/R/A/P/S/I edge markers. Thick slab: **AVG**, **MIP** or **MinIP** from 1 to 50 mm (AVG 10 mm by default). **Orthogonal planes** can be turned off to tilt the planes with the crosshair handles. The 3D pane has an orientation cube and a **3D style** picker: bone, soft tissue, MIP (grey), lung, angio, muscle. Cross-reference lines show in every pane whatever tool is selected. |
 | Brightness & contrast | **Auto** (computed from the image's pixel values), **Default** (the window stored in the file), and Hounsfield presets: soft tissue, lungs, bones, brain, abdomen, mediastinum, teeth, liver, stroke, subdural, angio and temporal bone. A custom width and level can be typed in. Keys `1` to `9` apply the first nine. |
 | Tools | Window/level, pan, zoom, scroll, magnify, and crosshairs in 3D cells. |
 | Measurements | Length, angle, Cobb angle, bidirectional, rectangle and ellipse ROI (with statistics), probe, arrow note and eraser. Measurements are for the session only and are never saved. |
 | Image | Invert, rotate left and right, flip horizontally and vertically, zoom and reset. |
-| Cine | Play a stack (or the active 3D plane) at 1 to 60 frames per second. |
-| Link viewports | Linked scrolling (by patient position when series share a frame of reference, otherwise by relative position), linked zoom and pan, linked window/level, and reference lines. |
+| Cine | Play a stack (or the active 3D plane) at 1 to 60 frames per second, looping or stopping at the last image. |
+| Link viewports | Linked scrolling (by patient position when series share a frame of reference, otherwise by relative position), linked zoom and pan, linked window/level, and cross-references (on by default). |
+| Show / hide | Switches for measurements, arrow notes and cross-references. Hidden measurements are kept; drawing a new one shows them again. |
 | Overlay | Corner information (series, study, image number, slice thickness and location, window, zoom, transforms) and orientation markers. Patient name, ID, sex, age and institution are shown only after the user turns on **Show patient details**. |
 | Output | Save the active viewport (with measurements and overlay) as a PNG, and full screen. |
 
@@ -47,8 +49,10 @@ Set up Vite with the `mihawkDicomViewer()` plugin, as described in the [Quicksta
 The workstation measures its own width, not the window, so it adapts wherever it is embedded.
 
 - **Desktop** (1024 px and wider): a toolbar with drop-down panels and a series sidebar. Panel labels appear from 1680 px; narrower widths show icons with tooltips.
-- **Tablet** (640–1023 px): a menu button opens a side menu with every option, and the header keeps quick buttons for the main tools and Auto contrast.
-- **Phone** (below 640 px): the header holds the menu button and the tabs. The side menu holds everything else and closes after each choice.
+- **Tablet** (640–1023 px): the menu button at the end of the header opens a side menu from the right with every option, and the header keeps quick buttons for the main tools and Auto contrast. A strip of real series thumbnails with image counts runs under the viewer.
+- **Phone** (below 640 px): the header holds the tabs and the menu button; the thumbnail strip sits under the viewer. The side menu holds everything else and closes after layout and series choices.
+
+The side menu starts with three tool tabs: **Navigate** (tools, linking, cine, rotate and flip), **Contrast** (invert, presets, custom window) and **Measure** (measurement tools). Below them come the layout icons, 3D settings, show/hide switches, the **2D / 3D** switch for the active viewport and the files section. A large **Reset** button stays at the bottom and restores every viewport's view.
 
 Set `menuMode="sidemenu"` or `menuMode="toolbar"` to force one presentation.
 

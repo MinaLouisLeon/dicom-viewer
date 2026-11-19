@@ -36,6 +36,8 @@ import {
   DEFAULT_MAX_VOLUME_BYTES,
   VOLUME_PLANES,
   type PlaneStatus,
+  type SlabMode,
+  type VolumeSlab,
   type RendererConfig,
   type ViewerTool,
   type VolumeImage,
@@ -75,7 +77,12 @@ const PRIMARY_BINDING = { mouseButton: ToolEnums.MouseBindings.Primary };
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 40;
 const WINDOW_STEP_FRACTION = 0.05;
-const VOLUME_PRESET = 'CT-Bone';
+const DEFAULT_VOLUME_PRESET = 'CT-Bone';
+const BLEND_MODES: Record<Exclude<SlabMode, 'none'>, Enums.BlendModes> = {
+  avg: Enums.BlendModes.AVERAGE_INTENSITY_BLEND,
+  mip: Enums.BlendModes.MAXIMUM_INTENSITY_BLEND,
+  minip: Enums.BlendModes.MINIMUM_INTENSITY_BLEND,
+};
 /** Files read in parallel while collecting slice headers. */
 const READ_CONCURRENCY = 4;
 const FIRST_FRAME_TIMEOUT_MS = 2000;
@@ -206,6 +213,10 @@ export async function createCornerstoneVolumeRenderer(
   let shown = false;
   let destroyed = false;
   let invert = false;
+  let slab: VolumeSlab = { mode: 'none', thickness: 0 };
+  let oblique = false;
+  let showCrosshairs = true;
+  let volumePreset = config.volumePreset ?? DEFAULT_VOLUME_PRESET;
 
   const getViewport = (view: VolumeView): Types.IViewport | undefined => engine?.getViewport(viewportIds[view]);
   const getVolumeViewport = (view: VolumeView) => getViewport(view) as Types.IVolumeViewport | undefined;
@@ -222,6 +233,11 @@ export async function createCornerstoneVolumeRenderer(
       }
     }
     mprGroup.setToolActive(TOOL_NAMES[primaryTool], { bindings: [PRIMARY_BINDING] });
+    if (primaryTool !== 'crosshairs') {
+      // Draw the reference lines (without taking the mouse) unless turned off.
+      if (showCrosshairs) mprGroup.setToolEnabled(TOOL_NAMES.crosshairs);
+      else mprGroup.setToolDisabled(TOOL_NAMES.crosshairs);
+    }
   };
 
   /** Creates the viewports and their tool groups. `withVolume` adds the 3D view. */
@@ -259,7 +275,8 @@ export async function createCornerstoneVolumeRenderer(
       // Required for click-to-jump and line dragging; rotation itself is disabled by the tool.
       getReferenceLineDraggableRotatable: () => true,
       getReferenceLineSlabThicknessControlsOn: () => false,
-      handleRadius: 0,
+      handleRadius: oblique ? 4 : 0,
+      allowRotation: oblique,
       mobile: { enabled: false },
     });
     for (const plane of VOLUME_PLANES) group.addViewport(viewportIds[plane], engineId);
@@ -306,6 +323,40 @@ export async function createCornerstoneVolumeRenderer(
     }
   };
 
+  /** Applies the current slab to every cross-section. */
+  const applySlab = (): void => {
+    for (const plane of VOLUME_PLANES) {
+      const viewport = getPlane(plane) as (Types.IVolumeViewport & { resetSlabThickness?: () => void }) | undefined;
+      if (!viewport) continue;
+      try {
+        if (slab.mode === 'none') {
+          viewport.setBlendMode(Enums.BlendModes.COMPOSITE);
+          viewport.resetSlabThickness?.();
+        } else {
+          viewport.setBlendMode(BLEND_MODES[slab.mode]);
+          viewport.setSlabThickness(Math.max(0.1, slab.thickness));
+        }
+        viewport.render();
+      } catch {
+        // Older GPUs may not support slab blending; keep thin slices.
+      }
+    }
+  };
+
+  const planeOrientation = (): VolumeStatus['orientation'] => {
+    const result: NonNullable<VolumeStatus['orientation']> = {};
+    for (const view of presentViews()) {
+      const camera = getViewport(view)?.getCamera();
+      if (!camera?.viewUp || !camera.viewPlaneNormal) continue;
+      const normal = normalize(camera.viewPlaneNormal as Vec3);
+      const up = normalize(camera.viewUp as Vec3);
+      const right = normalize(cross(up, normal));
+      const round = (v: Vec3): [number, number, number] => [Number(v[0].toFixed(3)), Number(v[1].toFixed(3)), Number(v[2].toFixed(3))];
+      result[view] = { right: round(right), down: round(scale(up, -1)), normal: round(normal) };
+    }
+    return result;
+  };
+
   // ── Status ────────────────────────────────────────────────────────────────
 
   const planeStatus = (plane: VolumePlane): PlaneStatus => {
@@ -326,6 +377,10 @@ export async function createCornerstoneVolumeRenderer(
       zoom: { axial: zoomOf('axial'), sagittal: zoomOf('sagittal'), coronal: zoomOf('coronal'), volume: zoomOf('volume') },
       volumeRendering,
       invert,
+      slab: { ...slab },
+      oblique,
+      volumePreset: volumeRendering ? volumePreset : undefined,
+      orientation: planeOrientation(),
     };
   };
 
@@ -522,7 +577,8 @@ export async function createCornerstoneVolumeRenderer(
           ]);
           const volume3d = getVolumeViewport('volume');
           if (volume3d) {
-            volume3d.setProperties({ preset: VOLUME_PRESET });
+            volume3d.setProperties({ preset: volumePreset });
+
             faceAnterior(volume3d);
             initialVolumeCamera = { ...volume3d.getCamera() };
           }
@@ -559,6 +615,7 @@ export async function createCornerstoneVolumeRenderer(
       const voiRange = getPlane(plane)?.getProperties()?.voiRange;
       if (voiRange) initialPlaneVoi.set(plane, { ...voiRange });
     }
+    applySlab();
     registry.releaseVolumeDatasets(imageIds);
     shown = true;
     scheduleStatus();
@@ -714,6 +771,47 @@ export async function createCornerstoneVolumeRenderer(
       scheduleStatus();
     },
 
+    setSlab(next: VolumeSlab): void {
+      slab = { mode: next.mode, thickness: Math.max(0, next.thickness) };
+      if (!shown) return;
+      applySlab();
+      scheduleStatus();
+    },
+
+    setOblique(value: boolean): void {
+      if (oblique === value) return;
+      oblique = value;
+      mprGroup?.setToolConfiguration(TranslateCrosshairsTool.toolName, { allowRotation: value, handleRadius: value ? 4 : 0 });
+      if (!value) {
+        // Back to orthogonal planes.
+        crosshairsTool()?.resetCrosshairs?.();
+        for (const plane of VOLUME_PLANES) getPlane(plane)?.resetCamera();
+        applySlab();
+      }
+      engine?.renderViewports(presentViews().map((view) => viewportIds[view]));
+      scheduleStatus();
+    },
+
+    setCrosshairsVisible(visible: boolean): void {
+      if (showCrosshairs === visible) return;
+      showCrosshairs = visible;
+      applyPrimaryTool();
+      engine?.renderViewports(presentViews().map((view) => viewportIds[view]));
+    },
+
+    setVolumePreset(preset: string): void {
+      volumePreset = preset;
+      const volume3d = getVolumeViewport('volume');
+      if (!shown || !volume3d) return;
+      try {
+        volume3d.setProperties({ preset });
+        volume3d.render();
+      } catch {
+        // Unknown preset.
+      }
+      scheduleStatus();
+    },
+
     resetView(): void {
       if (!shown) return;
       for (const plane of VOLUME_PLANES) {
@@ -727,10 +825,11 @@ export async function createCornerstoneVolumeRenderer(
       if (volume3d) {
         if (initialVolumeCamera) volume3d.setCamera({ ...initialVolumeCamera });
         else volume3d.resetCamera();
-        volume3d.setProperties({ preset: VOLUME_PRESET });
+        volume3d.setProperties({ preset: volumePreset });
       }
       invert = false;
       crosshairsTool()?.resetCrosshairs?.();
+      applySlab();
       engine?.renderViewports(presentViews().map((view) => viewportIds[view]));
       scheduleStatus();
     },
