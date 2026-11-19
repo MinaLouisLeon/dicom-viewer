@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.tgz
 .vite/
+.astro/
 coverage/
 *.log
 .DS_Store

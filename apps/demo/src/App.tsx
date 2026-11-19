@@ -1,161 +1,134 @@
-import {
+﻿import {
+  DEFAULT_CODEC_BASE_PATH,
   DicomViewer,
-  defaultLabels,
   type DicomViewerHandle,
-  type DicomViewerLabels,
   type ViewerState,
 } from '@mihawksolutions/dicom-viewer';
-import { useCallback, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-/** Synthetic sample sets served from ../../fixtures (no patient data). */
-const SAMPLES: Record<string, string[]> = {
-  'Intraoral (3 encodings)': [
-    'synthetic/single/intraoral-explicit-le.dcm',
-    'synthetic/codecs/intraoral-jpeg2000-lossless.dcm',
-    'synthetic/codecs/intraoral-jpegls-lossless.dcm',
-  ],
-  'CT stack (12 slices)': Array.from(
-    { length: 12 },
-    (_, index) => `synthetic/stack/ct-${String(index + 1).padStart(3, '0')}.dcm`,
-  ),
-  'CT with damaged slice 4': Array.from(
-    { length: 6 },
-    (_, index) => `synthetic/damaged-stack/ct-${String(index + 1).padStart(3, '0')}.dcm`,
-  ),
-  'Invalid files': ['synthetic/invalid/not-dicom.txt', 'synthetic/invalid/truncated-pixel-data.dcm'],
-  'CBCT phantom (3 series)': [
-    ...Array.from({ length: 64 }, (_, index) => `synthetic/cbct/cbct-${String(index + 1).padStart(3, '0')}.dcm`),
-    'synthetic/cbct-multiframe/cbct-enhanced.dcm',
-    ...Array.from({ length: 16 }, (_, index) => index)
-      .filter((index) => index !== 8)
-      .map((index) => `synthetic/cbct-missing-slice/cbct-${String(index + 1).padStart(3, '0')}.dcm`),
-  ],
-};
-
-const frenchLabels: Partial<DicomViewerLabels> = {
-  viewerRegion: 'Visionneuse DICOM',
-  openFiles: 'Ouvrir des fichiers',
-  openFolder: 'Ouvrir un dossier',
-  clear: "Fermer l'examen",
-  cancel: 'Annuler',
-  dropZoneTitle: 'Ouvrir des fichiers DICOM',
-  dropZoneHint: 'Déposez des fichiers ou un dossier ici, ou utilisez les boutons ci-dessus.',
-  privacyNote: 'Les fichiers sont lus dans ce navigateur et ne sont pas envoyés.',
-  studiesHeading: 'Examens',
-  seriesList: 'Séries',
-  imageCount: (count) => (count === 1 ? '1 image' : `${count} images`),
-  scanning: (processed, total) => `Lecture des fichiers… ${processed} sur ${total}`,
-  loadingSeries: 'Chargement des images…',
-  skippedFiles: (count) => (count === 1 ? '1 fichier ignoré.' : `${count} fichiers ignorés.`),
-  errors: {
-    ...defaultLabels.errors,
-    NO_DICOM_FILES: 'Aucune image DICOM trouvée dans les fichiers sélectionnés.',
+const samples = [
+  {
+    name: 'Dental radiograph',
+    detail: 'Compare enamel, roots, and fine detail with zoom and window/level.',
+    paths: ['dental.dcm'],
   },
-};
+  {
+    name: 'Head CT',
+    detail: 'Scroll through 48 slices, then switch to 3D for linked cross-sections.',
+    paths: Array.from({ length: 48 }, (_, index) => `head/ct-${String(index + 1).padStart(3, '0')}.dcm`),
+  },
+  {
+    name: 'JPEG 2000 radiograph',
+    detail: 'View the same dental phantom encoded as lossless JPEG 2000.',
+    paths: ['dental-jpeg2000.dcm'],
+  },
+];
 
-interface LogEntry {
-  id: number;
-  time: string;
-  text: string;
-}
+const volumePanes = [
+  ['axial', 'Axial'],
+  ['sagittal', 'Sagittal'],
+  ['coronal', 'Coronal'],
+  ['volume', '3D view'],
+] as const;
 
 export function App() {
-  const viewerRef = useRef<DicomViewerHandle>(null);
-  const [files, setFiles] = useState<File[] | undefined>();
-  const [locale, setLocale] = useState<'en' | 'fr'>('en');
-  // Read once by the viewer, so changing it remounts the viewer (via `key`).
-  const [volumeRendering, setVolumeRendering] = useState(true);
-  const [phase, setPhase] = useState<ViewerState['phase']>('idle');
-  const [log, setLog] = useState<LogEntry[]>([]);
+  const viewer = useRef<DicomViewerHandle>(null);
+  const picker = useRef<HTMLDialogElement>(null);
+  const request = useRef<AbortController | null>(null);
+  const viewerArea = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState<string>();
+  const [error, setError] = useState('');
+  const [state, setState] = useState<ViewerState>();
+  const [seriesOpen, setSeriesOpen] = useState(false);
 
-  // Logs only counts and codes: never file names or DICOM values.
-  const addLog = useCallback((text: string) => {
-    setLog((entries) =>
-      [{ id: Date.now() + Math.random(), time: new Date().toLocaleTimeString(), text }, ...entries].slice(0, 50),
-    );
-  }, []);
+  useEffect(() => () => request.current?.abort(), []);
 
-  const loadSample = async (name: string) => {
-    const paths = SAMPLES[name] ?? [];
-    const loaded = await Promise.all(
-      paths.map(async (path) => {
-        const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
-        return new File([await response.blob()], path.split('/').pop() ?? 'sample.dcm');
-      }),
-    );
-    setFiles(loaded);
-  };
+  async function loadSample(sample: (typeof samples)[number]) {
+    const controller = new AbortController();
+    request.current = controller;
+    setLoading(sample.name);
+    setError('');
+    try {
+      const files = await Promise.all(sample.paths.map(async (path) => {
+        const response = await fetch(`${import.meta.env.BASE_URL}samples/${path}`, { signal: controller.signal });
+        if (!response.ok) throw new Error('Sample unavailable');
+        return new File([await response.blob()], path.split('/').pop()!, { type: 'application/dicom' });
+      }));
+      if (controller.signal.aborted) return;
+      picker.current?.close();
+      void viewer.current?.openFiles(files);
+    } catch {
+      if (!controller.signal.aborted) {
+        controller.abort();
+        setError('The sample could not be downloaded. Please try again.');
+      }
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+        setLoading(undefined);
+      }
+    }
+  }
 
   return (
-    <div className="demo">
+    <main className={seriesOpen ? 'demo demo-series-open' : 'demo'}>
       <header className="demo-header">
-        <div>
-          <h1>@mihawksolutions/dicom-viewer</h1>
-          <p>Development demo · local files only · phase: <code data-testid="phase">{phase}</code></p>
-        </div>
+        <h1>DICOM Viewer</h1>
         <div className="demo-actions">
-          {Object.keys(SAMPLES).map((name) => (
-            <button key={name} type="button" onClick={() => void loadSample(name)}>
-              Sample: {name}
-            </button>
-          ))}
-          <button type="button" onClick={() => viewerRef.current?.clear()}>
-            Simulate logout (clear)
-          </button>
-          <label>
-            <input
-              type="checkbox"
-              checked={volumeRendering}
-              onChange={(event) => setVolumeRendering(event.target.checked)}
-            />{' '}
-            3D volume rendering
-          </label>
-          <label>
-            Labels{' '}
-            <select value={locale} onChange={(event) => setLocale(event.target.value as 'en' | 'fr')}>
-              <option value="en">English (default)</option>
-              <option value="fr">Français</option>
-            </select>
-          </label>
+          {Boolean(state?.studies.length) && (
+            <button className="demo-series-toggle" type="button" aria-expanded={seriesOpen}
+              onClick={() => setSeriesOpen(!seriesOpen)}>Series</button>
+          )}
+          <button type="button" onClick={() => {
+            setSeriesOpen(false);
+            picker.current?.showModal();
+          }}>Try a sample</button>
         </div>
       </header>
-
-      <main className="demo-main">
-        <div className="demo-viewer">
-          <DicomViewer
-            key={volumeRendering ? 'vr-on' : 'vr-off'}
-            ref={viewerRef}
-            volumeRendering={volumeRendering}
-            files={files}
-            labels={locale === 'fr' ? frenchLabels : undefined}
-            onStateChange={(state) => setPhase(state.phase)}
-            onStudiesLoaded={(studies) =>
-              addLog(`studies loaded: ${studies.length} study, ${studies.reduce((n, s) => n + s.series.length, 0)} series`)
-            }
-            onSeriesDisplayed={(series, layout) =>
-              addLog(
-                `series displayed (${layout}): ${series.imageCount} images` +
-                  (series.volume.supported ? ` · volume ${series.volume.dimensions.join('×')}` : ''),
-              )
-            }
-            onError={(error) => {
-              addLog(`error: ${error.code}`);
-              // Development aid only. The cause comes from the decoder and holds no file names.
-              if (import.meta.env.DEV) console.error('[demo] viewer error cause', error.cause);
-            }}
-          />
-        </div>
-        <aside className="demo-log" aria-label="Event log">
-          <h2>Events</h2>
-          <ol>
-            {log.map((entry) => (
-              <li key={entry.id}>
-                <time>{entry.time}</time> {entry.text}
-              </li>
-            ))}
-          </ol>
-        </aside>
-      </main>
-    </div>
+      <div ref={viewerArea} className="demo-viewer" onClick={(event) => {
+        if (event.target instanceof Element && event.target.closest('.mivo-dv-series')) {
+          setSeriesOpen(false);
+        }
+      }}>
+        <DicomViewer
+          ref={viewer}
+          codecBasePath={import.meta.env.BASE_URL + DEFAULT_CODEC_BASE_PATH.slice(1)}
+          maxVolumeBytes={256 * 1024 * 1024}
+          onStateChange={setState}
+        />
+      </div>
+      {state?.phase === 'displayed' && state.layout === '3d' && (
+        <nav className="demo-volume-nav" aria-label="Volume views">
+          {volumePanes.map(([view, label]) => (
+            <button key={view} type="button" onClick={() => {
+              const pane = viewerArea.current?.querySelector<HTMLElement>(`.mivo-dv-pane[data-view="${view}"]`);
+              pane?.scrollIntoView({ block: 'nearest', inline: 'start' });
+            }}>{label}</button>
+          ))}
+        </nav>
+      )}
+      <dialog ref={picker} className="demo-picker" aria-labelledby="sample-title"
+        onClose={() => {
+          request.current?.abort();
+          request.current = null;
+          setLoading(undefined);
+          setError('');
+        }}>
+        <header>
+          <h2 id="sample-title">Sample studies</h2>
+          <button type="button" onClick={() => picker.current?.close()}>Close</button>
+        </header>
+        <p>These synthetic studies contain no patient data.</p>
+        {samples.map((sample) => (
+          <button className="demo-sample" key={sample.name} type="button"
+            disabled={Boolean(loading)} onClick={() => void loadSample(sample)}>
+            <strong>{sample.name}</strong>
+            <span>{sample.detail}</span>
+          </button>
+        ))}
+        {loading && <p role="status">Downloading {loading}…</p>}
+        {error && <p role="alert">{error}</p>}
+      </dialog>
+    </main>
   );
 }
