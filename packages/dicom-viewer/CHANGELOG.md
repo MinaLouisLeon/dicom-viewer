@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0
+## 0.5.0
 
 - Added local DICOM file and folder selection, study and series grouping, and a React viewer with a typed host API.
 - Added 2D image and stack navigation, pan, zoom, window and level, keyboard controls, and recovery from damaged slices.

@@ -6,7 +6,7 @@ description: Set up the viewer in a React and Vite app.
 Install the package from npm after publication.
 
 ```sh
-npm install @mihawksolutions/dicom-viewer
+npm install @mihawksolutions/dicom-viewer@0.5.0
 ```
 
 To try a source checkout before publication, run `npm run build:package` and `npm pack --workspace @mihawksolutions/dicom-viewer` from the repository root. Install the resulting tarball in your app with `npm install /path/to/package.tgz`.

@@ -2,7 +2,7 @@
 
 React DICOM viewer for files the user selects on their own device. Built on [Cornerstone3D](https://www.cornerstonejs.org/).
 
-Version 1.0.0 is the initial release. Earlier 2D and 3D browser checks used synthetic fixtures. Manual validation with representative studies, including large-study benchmarks, follows publication.
+Version 0.5.0 is the initial release. Earlier 2D and 3D browser checks used synthetic fixtures. Manual validation with representative studies, including large-study benchmarks, follows publication.
 
 ## Privacy model
 
@@ -17,7 +17,7 @@ Version 1.0.0 is the initial release. Earlier 2D and 3D browser checks used synt
 After publication, install the version from npm:
 
 ```sh
-npm install @mihawksolutions/dicom-viewer@1.0.0
+npm install @mihawksolutions/dicom-viewer@0.5.0
 ```
 
 To build and pack locally from the repository root:
@@ -30,7 +30,7 @@ npm pack --workspace @mihawksolutions/dicom-viewer
 In your React + Vite consumer, install the generated tarball:
 
 ```sh
-npm install /path/to/mihawksolutions-dicom-viewer-1.0.0.tgz
+npm install /path/to/mihawksolutions-dicom-viewer-0.5.0.tgz
 ```
 
 ```ts
