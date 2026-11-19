@@ -35,11 +35,11 @@ npm install /path/to/mihawksolutions-dicom-viewer-0.5.0.tgz
 
 ```ts
 // vite.config.ts
-import { mivoDicomViewer } from '@mihawksolutions/dicom-viewer/vite';
+import { mihawkDicomViewer } from '@mihawksolutions/dicom-viewer/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-export default defineConfig({ plugins: [react(), mivoDicomViewer()] });
+export default defineConfig({ plugins: [react(), mihawkDicomViewer()] });
 ```
 
 ```tsx
@@ -71,11 +71,11 @@ The viewer fills its container. Give the container a height.
 
 ### What the Vite plugin does
 
-- Serves the codec `.wasm` files in development and emits them at `<base>mivo-dicom-viewer/codecs/` in production builds.
+- Serves the codec `.wasm` files in development and emits them at `<base>mihawk-dicom-viewer/codecs/` in production builds.
 - Keeps `@cornerstonejs/dicom-image-loader` out of dependency pre-bundling so Vite bundles its decode worker, and pre-bundles the CommonJS codec wrappers that the worker imports.
 - Maps Node's `events` module to the browser `events` package. Cornerstone needs this because vtk.js uses xmlbuilder2.
 
-If your app uses a non-root `base`, pass `codecBasePath={`${base}mivo-dicom-viewer/codecs/`}`.
+If your app uses a non-root `base`, pass `codecBasePath={`${base}mihawk-dicom-viewer/codecs/`}`.
 
 ## API
 
@@ -85,7 +85,7 @@ If your app uses a non-root `base`, pass `codecBasePath={`${base}mivo-dicom-view
 |---|---|---|
 | `labels` | `Partial<DicomViewerLabels>` | Overrides for any user-visible text. See `defaultLabels`. |
 | `files` | `readonly Blob[]` | Local files from the host, for example from its own drop target. The viewer opens them whenever a new array is passed. |
-| `codecBasePath` | `string` | Where codec files are served. Defaults to `/mivo-dicom-viewer/codecs/`. Applies to the whole page, and the first viewer's value wins. |
+| `codecBasePath` | `string` | Where codec files are served. Defaults to `/mihawk-dicom-viewer/codecs/`. Applies to the whole page, and the first viewer's value wins. |
 | `maxWebWorkers` | `number` | Maximum number of decode workers. Defaults to half the logical CPUs. |
 | `initialTool` | `ViewerTool` | 2D tool for the primary mouse button and arrow keys on mount: `'windowLevel'` (default), `'pan'`, `'zoom'` or `'scroll'`. |
 | `initialLayout` | `'2d' \| '3d'` | Preferred layout when a series opens. Default `'2d'`. Series that cannot form a volume always open in 2D. Read once. |
@@ -154,7 +154,9 @@ The toolbar zoom buttons act on the last pane used. Display follows the radiolog
 
 ### Styling
 
-Every selector is scoped under `.mivo-dv`. To theme the viewer, override the `--mivo-dv-*` custom properties, such as `--mivo-dv-accent`, `--mivo-dv-bg` or `--mivo-dv-font`.
+When upgrading from 0.5.0, update named Vite imports to `mihawkDicomViewer`, use the `mihawk-dv` prefix for custom selectors and theme properties, and point any explicitly configured codec URL at the new asset location.
+
+Every selector is scoped under `.mihawk-dv`. To theme the viewer, override the `--mihawk-dv-*` custom properties, such as `--mihawk-dv-accent`, `--mihawk-dv-bg` or `--mihawk-dv-font`.
 
 ## Inputs (current)
 

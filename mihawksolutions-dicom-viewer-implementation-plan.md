@@ -131,7 +131,7 @@ Use **Not started**, **In progress**, **Blocked**, **Ready for review**, and **A
 | 2026-11-17 | First release provides the full React UI with 2D and 3D viewing of locally selected DICOM files. Validate studies up to 1 GB and document the supported hardware envelope. Publish and clean-install-test before SaaS implementation. |
 | 2026-11-18 | Plan approved. P01 may start before P00-01/P00-02 close; both must close before the P04 release candidate. |
 | 2026-11-18 | Toolchain: npm workspaces, Node 22, Vite 8.3.8, React 19.3.1 (peer range `>=18.2 <20`), TypeScript 6.0.3 (TypeScript 7 not used yet because its compiler API is not needed and tooling support is unverified), Vitest 5.1. Cornerstone3D packages pinned to exactly 5.19.4. |
-| 2026-11-18 | Integration: consumers add the `mivoDicomViewer()` Vite plugin from `@mihawksolutions/dicom-viewer/vite`, which serves the codecs, configures the worker build, and aliases `events` to a browser polyfill. Codec path is a prop (`codecBasePath`). |
+| 2026-11-18 | Integration: consumers add the `mihawkDicomViewer()` Vite plugin from `@mihawksolutions/dicom-viewer/vite`, which serves the codecs, configures the worker build, and aliases `events` to a browser polyfill. Codec path is a prop (`codecBasePath`). |
 | 2026-11-18 | Package stays `private: true` and `UNLICENSED` until P00-01 records the license and P05 approves publication, so it cannot be published by accident. |
 | 2026-11-18 | Package owner requested preparing the initial release and doing manual compatibility and performance validation after publication. This supersedes the pre-publication test sequence. |
 | 2026-11-19 | Package owner set the initial npm release target to 0.5.0. |

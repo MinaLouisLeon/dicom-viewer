@@ -86,7 +86,7 @@ export function App() {
         </div>
       </header>
       <div ref={viewerArea} className="demo-viewer" onClick={(event) => {
-        if (event.target instanceof Element && event.target.closest('.mivo-dv-series')) {
+        if (event.target instanceof Element && event.target.closest('.mihawk-dv-series')) {
           setSeriesOpen(false);
         }
       }}>
@@ -101,7 +101,7 @@ export function App() {
         <nav className="demo-volume-nav" aria-label="Volume views">
           {volumePanes.map(([view, label]) => (
             <button key={view} type="button" onClick={() => {
-              const pane = viewerArea.current?.querySelector<HTMLElement>(`.mivo-dv-pane[data-view="${view}"]`);
+              const pane = viewerArea.current?.querySelector<HTMLElement>(`.mihawk-dv-pane[data-view="${view}"]`);
               pane?.scrollIntoView({ block: 'nearest', inline: 'start' });
             }}>{label}</button>
           ))}

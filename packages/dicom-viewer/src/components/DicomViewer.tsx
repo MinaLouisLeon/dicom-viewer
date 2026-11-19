@@ -40,9 +40,9 @@ export interface DicomViewerProps {
   /** Overrides for any user-visible text. */
   labels?: Partial<DicomViewerLabels>;
   /**
-   * Where the codec `.wasm` files are served. The `mivoDicomViewer()` Vite plugin serves
-   * them at `<base>mivo-dicom-viewer/codecs/`. Applies page-wide; the first viewer wins.
-   * @default '/mivo-dicom-viewer/codecs/'
+   * Where the codec `.wasm` files are served. The `mihawkDicomViewer()` Vite plugin serves
+   * them at `<base>mihawk-dicom-viewer/codecs/`. Applies page-wide; the first viewer wins.
+   * @default '/mihawk-dicom-viewer/codecs/'
    */
   codecBasePath?: string;
   /** Upper bound on decode workers. Defaults to half the logical CPU count. */
@@ -438,45 +438,45 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
   const windowWidth = is3d ? volumeStatus?.windowWidth : status?.windowWidth;
   const windowCenter = is3d ? volumeStatus?.windowCenter : status?.windowCenter;
   const progressValue = state.progress;
-  const rootClass = ['mivo-dv', className].filter(Boolean).join(' ');
+  const rootClass = ['mihawk-dv', className].filter(Boolean).join(' ');
 
   return (
     <section className={rootClass} style={style} aria-label={labels.viewerRegion} onKeyDown={onKeyDown}>
-      <div ref={toolbarRef} className="mivo-dv-toolbar" role="toolbar" aria-label={labels.toolbar}
+      <div ref={toolbarRef} className="mihawk-dv-toolbar" role="toolbar" aria-label={labels.toolbar}
         onFocus={onToolbarFocus} onKeyDown={onToolbarKeyDown}>
-        <div className="mivo-dv-toolbar-group">
-          <button type="button" className="mivo-dv-button" onClick={() => fileInputRef.current?.click()}>
+        <div className="mihawk-dv-toolbar-group">
+          <button type="button" className="mihawk-dv-button" onClick={() => fileInputRef.current?.click()}>
             {labels.openFiles}
           </button>
-          <button type="button" className="mivo-dv-button" onClick={() => folderInputRef.current?.click()}>
+          <button type="button" className="mihawk-dv-button" onClick={() => folderInputRef.current?.click()}>
             {labels.openFolder}
           </button>
           {busy && (
-            <button type="button" className="mivo-dv-button" onClick={() => session.cancel()}>
+            <button type="button" className="mihawk-dv-button" onClick={() => session.cancel()}>
               {labels.cancel}
             </button>
           )}
           {(hasStudies || state.phase === 'error') && !busy && (
-            <button type="button" className="mivo-dv-button" onClick={() => session.clear()}>
+            <button type="button" className="mihawk-dv-button" onClick={() => session.clear()}>
               {labels.clear}
             </button>
           )}
         </div>
         {hasStudies && (
           <>
-            <div className="mivo-dv-toolbar-group" role="group" aria-label={labels.layoutGroup}>
+            <div className="mihawk-dv-toolbar-group" role="group" aria-label={labels.layoutGroup}>
               {LAYOUTS.map((layout) => {
                 const unavailable = layout === '3d' && !!state.selectedSeriesUid && !volumeSupport?.supported;
                 return (
                   <button
                     key={layout}
                     type="button"
-                    className="mivo-dv-button"
+                    className="mihawk-dv-button"
                     aria-pressed={state.layout === layout}
                     disabled={state.phase === 'scanning' || unavailable}
                     title={unavailable ? volumeUnsupportedText : undefined}
                     aria-describedby={unavailable ? ids.layoutHint : undefined}
-                    data-testid={`mivo-dv-layout-${layout}`}
+                    data-testid={`mihawk-dv-layout-${layout}`}
                     onClick={() => void session.setLayout(layout)}
                   >
                     {labels.layouts[layout]}
@@ -484,17 +484,17 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                 );
               })}
               {volumeUnsupportedText && (
-                <span id={ids.layoutHint} className="mivo-dv-visually-hidden">
+                <span id={ids.layoutHint} className="mihawk-dv-visually-hidden">
                   {volumeUnsupportedText}
                 </span>
               )}
             </div>
-            <div className="mivo-dv-toolbar-group" role="group" aria-label={labels.toolGroup}>
+            <div className="mihawk-dv-toolbar-group" role="group" aria-label={labels.toolGroup}>
               {toolList.map((tool) => (
                 <button
                   key={tool}
                   type="button"
-                  className="mivo-dv-button"
+                  className="mihawk-dv-button"
                   aria-pressed={viewport.tool === tool}
                   aria-keyshortcuts={TOOL_SHORTCUTS[tool]}
                   disabled={!displayed}
@@ -504,10 +504,10 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                 </button>
               ))}
             </div>
-            <div className="mivo-dv-toolbar-group">
+            <div className="mihawk-dv-toolbar-group">
               <button
                 type="button"
-                className="mivo-dv-button"
+                className="mihawk-dv-button"
                 disabled={!displayed}
                 onClick={() => zoomBy(ZOOM_STEP)}
               >
@@ -515,13 +515,13 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
               </button>
               <button
                 type="button"
-                className="mivo-dv-button"
+                className="mihawk-dv-button"
                 disabled={!displayed}
                 onClick={() => zoomBy(1 / ZOOM_STEP)}
               >
                 {labels.zoomOut}
               </button>
-              <button type="button" className="mivo-dv-button" disabled={!displayed} onClick={() => session.resetView()}>
+              <button type="button" className="mihawk-dv-button" disabled={!displayed} onClick={() => session.resetView()}>
                 {labels.resetView}
               </button>
             </div>
@@ -529,12 +529,12 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
         )}
         <input
           ref={fileInputRef}
-          className="mivo-dv-hidden-input"
+          className="mihawk-dv-hidden-input"
           type="file"
           multiple
           tabIndex={-1}
           aria-hidden="true"
-          data-testid="mivo-dv-file-input"
+          data-testid="mihawk-dv-file-input"
           onChange={(event) => {
             openSelection(event.currentTarget.files);
             event.currentTarget.value = '';
@@ -542,12 +542,12 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
         />
         <input
           ref={folderInputRef}
-          className="mivo-dv-hidden-input"
+          className="mihawk-dv-hidden-input"
           type="file"
           multiple
           tabIndex={-1}
           aria-hidden="true"
-          data-testid="mivo-dv-folder-input"
+          data-testid="mihawk-dv-folder-input"
           {...directoryInputProps}
           onChange={(event) => {
             openSelection(event.currentTarget.files);
@@ -556,26 +556,26 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
         />
       </div>
 
-      <div className="mivo-dv-body">
+      <div className="mihawk-dv-body">
         {hasStudies && (
-          <nav className="mivo-dv-sidebar" aria-labelledby={ids.studies}>
-            <h2 className="mivo-dv-heading" id={ids.studies}>
+          <nav className="mihawk-dv-sidebar" aria-labelledby={ids.studies}>
+            <h2 className="mihawk-dv-heading" id={ids.studies}>
               {labels.studiesHeading}
             </h2>
             {state.studies.map((study) => (
-              <div className="mivo-dv-study" key={study.studyInstanceUid}>
-                <div className="mivo-dv-study-title">
+              <div className="mihawk-dv-study" key={study.studyInstanceUid}>
+                <div className="mihawk-dv-study-title">
                   <span>{study.description ?? labels.untitledStudy}</span>
-                  {study.date && <span className="mivo-dv-muted">{labels.formatStudyDate(study.date)}</span>}
+                  {study.date && <span className="mihawk-dv-muted">{labels.formatStudyDate(study.date)}</span>}
                 </div>
-                <ul className="mivo-dv-series-list" aria-label={labels.seriesList}>
+                <ul className="mihawk-dv-series-list" aria-label={labels.seriesList}>
                   {study.series.map((series) => {
                     const selected = series.seriesInstanceUid === state.selectedSeriesUid;
                     return (
                       <li key={series.seriesInstanceUid}>
                         <button
                           type="button"
-                          className="mivo-dv-series"
+                          className="mihawk-dv-series"
                           aria-pressed={selected}
                           onClick={() => void session.selectSeries(series.seriesInstanceUid)}
                         >
@@ -586,10 +586,10 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                               modality: series.modality,
                             }) || labels.untitledSeries}
                           </span>
-                          <span className="mivo-dv-muted">
+                          <span className="mihawk-dv-muted">
                             {labels.imageCount(series.imageCount)}
                             {series.volume.supported && (
-                              <span className="mivo-dv-badge" data-testid="mivo-dv-volume-badge">
+                              <span className="mihawk-dv-badge" data-testid="mihawk-dv-volume-badge">
                                 {labels.volumeBadge}
                               </span>
                             )}
@@ -604,9 +604,9 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
           </nav>
         )}
 
-        <div className="mivo-dv-main">
+        <div className="mihawk-dv-main">
           <div
-            className="mivo-dv-stage"
+            className="mihawk-dv-stage"
             data-drag-active={dragActive || undefined}
             onDragOver={onDragOver}
             onDragLeave={() => setDragActive(false)}
@@ -614,9 +614,9 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
           >
             <div
               ref={viewportRef}
-              className="mivo-dv-viewport"
+              className="mihawk-dv-viewport"
               data-visible={(showViewport && !is3d) || undefined}
-              data-testid="mivo-dv-viewport"
+              data-testid="mihawk-dv-viewport"
               role="application"
               aria-label={labels.imageViewport}
               aria-describedby={ids.viewportHelp}
@@ -627,12 +627,12 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
               onPointerDown={(event) => event.currentTarget.focus({ preventScroll: true })}
               onContextMenu={(event) => event.preventDefault()}
             />
-            <span id={ids.viewportHelp} className="mivo-dv-visually-hidden">
+            <span id={ids.viewportHelp} className="mihawk-dv-visually-hidden">
               {labels.imageViewportHelp}
             </span>
 
             <div
-              className="mivo-dv-volume-grid"
+              className="mihawk-dv-volume-grid"
               data-visible={(showViewport && is3d) || undefined}
               aria-hidden={!is3d || undefined}
             >
@@ -641,20 +641,20 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                 const planeStatus = plane ? volumeStatus?.planes[plane] : undefined;
                 const renderingOff = view === 'volume' && volumeStatus?.volumeRendering === false;
                 return (
-                  <div className="mivo-dv-pane" key={view} data-view={view} data-active={activeView === view || undefined}>
-                    <div className="mivo-dv-pane-header">
-                      <span className="mivo-dv-pane-title">{labels.views[view]}</span>
+                  <div className="mihawk-dv-pane" key={view} data-view={view} data-active={activeView === view || undefined}>
+                    <div className="mihawk-dv-pane-header">
+                      <span className="mihawk-dv-pane-title">{labels.views[view]}</span>
                       {planeStatus && planeStatus.count > 0 && (
-                        <span className="mivo-dv-pane-position" data-testid={`mivo-dv-slice-${view}`}>
+                        <span className="mihawk-dv-pane-position" data-testid={`mihawk-dv-slice-${view}`}>
                           {planeStatus.index + 1} / {planeStatus.count}
                         </span>
                       )}
                     </div>
-                    <div className="mivo-dv-pane-canvas">
+                    <div className="mihawk-dv-pane-canvas">
                       <div
                         ref={volumeRefs[view]}
-                        className="mivo-dv-pane-viewport"
-                        data-testid={`mivo-dv-pane-${view}`}
+                        className="mihawk-dv-pane-viewport"
+                        data-testid={`mihawk-dv-pane-${view}`}
                         role="application"
                         aria-label={labels.views[view]}
                         aria-describedby={plane ? ids.planeHelp : ids.volumeHelp}
@@ -668,7 +668,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                         onContextMenu={(event) => event.preventDefault()}
                       />
                       {renderingOff && (
-                        <div className="mivo-dv-pane-notice" role="note">
+                        <div className="mihawk-dv-pane-notice" role="note">
                           {labels.volumeRenderingUnavailable}
                         </div>
                       )}
@@ -676,7 +676,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                     {plane && planeStatus && planeStatus.count > 1 && (
                       <input
                         type="range"
-                        className="mivo-dv-slider mivo-dv-pane-slider"
+                        className="mihawk-dv-slider mihawk-dv-pane-slider"
                         min={1}
                         max={planeStatus.count}
                         step={1}
@@ -690,59 +690,59 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
                 );
               })}
             </div>
-            <span id={ids.planeHelp} className="mivo-dv-visually-hidden">
+            <span id={ids.planeHelp} className="mihawk-dv-visually-hidden">
               {labels.planeViewportHelp}
             </span>
-            <span id={ids.volumeHelp} className="mivo-dv-visually-hidden">
+            <span id={ids.volumeHelp} className="mihawk-dv-visually-hidden">
               {labels.volumeViewportHelp}
             </span>
 
             {status?.imageFailed && (
-              <div className="mivo-dv-banner" role="alert">
+              <div className="mihawk-dv-banner" role="alert">
                 {labels.imageFailed(status.imageIndex + 1, status.imageCount)}
               </div>
             )}
 
             {state.phase === 'idle' && (
-              <div className="mivo-dv-overlay mivo-dv-dropzone">
-                <p className="mivo-dv-title">{labels.dropZoneTitle}</p>
+              <div className="mihawk-dv-overlay mihawk-dv-dropzone">
+                <p className="mihawk-dv-title">{labels.dropZoneTitle}</p>
                 <p>{labels.dropZoneHint}</p>
-                <p className="mivo-dv-muted">{labels.privacyNote}</p>
+                <p className="mihawk-dv-muted">{labels.privacyNote}</p>
               </div>
             )}
 
             {busy && (
-              <div className="mivo-dv-overlay" aria-describedby={ids.status}>
+              <div className="mihawk-dv-overlay" aria-describedby={ids.status}>
                 {state.phase === 'scanning' && progressValue ? (
                   <progress
-                    className="mivo-dv-progress"
+                    className="mihawk-dv-progress"
                     max={Math.max(1, progressValue.total)}
                     value={progressValue.processed}
                     aria-label={labels.scanning(progressValue.processed, progressValue.total)}
                   />
                 ) : state.phase === 'loading' && is3d && progressValue ? (
                   <progress
-                    className="mivo-dv-progress"
+                    className="mihawk-dv-progress"
                     max={Math.max(1, progressValue.total)}
                     value={progressValue.processed}
                     aria-label={labels.loadingVolume(progressValue.processed, progressValue.total)}
                   />
                 ) : (
-                  <progress className="mivo-dv-progress" aria-label={labels.loadingSeries} />
+                  <progress className="mihawk-dv-progress" aria-label={labels.loadingSeries} />
                 )}
               </div>
             )}
 
             {state.phase === 'error' && state.error && (
-              <div className="mivo-dv-overlay mivo-dv-error" role="alert">
+              <div className="mihawk-dv-overlay mihawk-dv-error" role="alert">
                 <p>{labels.errors[state.error.code]}</p>
                 {state.error.code === 'VOLUME_UNSUPPORTED' && volumeUnsupportedText && (
-                  <p className="mivo-dv-muted">{volumeUnsupportedText}</p>
+                  <p className="mihawk-dv-muted">{volumeUnsupportedText}</p>
                 )}
                 {state.error.code.startsWith('VOLUME_') && is3d && state.selectedSeriesUid && (
                   <button
                     type="button"
-                    className="mivo-dv-button mivo-dv-error-action"
+                    className="mihawk-dv-button mihawk-dv-error-action"
                     onClick={() => void session.setLayout('2d')}
                   >
                     {labels.openIn2d}
@@ -753,10 +753,10 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
           </div>
 
           {status && imageCount > 1 && (
-            <div className="mivo-dv-slicebar" role="group" aria-label={labels.sliceControls}>
+            <div className="mihawk-dv-slicebar" role="group" aria-label={labels.sliceControls}>
               <button
                 type="button"
-                className="mivo-dv-button mivo-dv-icon-button"
+                className="mihawk-dv-button mihawk-dv-icon-button"
                 aria-label={labels.previousImage}
                 title={labels.previousImage}
                 disabled={status.imageIndex <= 0}
@@ -766,7 +766,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
               </button>
               <input
                 type="range"
-                className="mivo-dv-slider"
+                className="mihawk-dv-slider"
                 min={1}
                 max={imageCount}
                 step={1}
@@ -777,7 +777,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
               />
               <button
                 type="button"
-                className="mivo-dv-button mivo-dv-icon-button"
+                className="mihawk-dv-button mihawk-dv-icon-button"
                 aria-label={labels.nextImage}
                 title={labels.nextImage}
                 disabled={status.imageIndex >= imageCount - 1}
@@ -785,7 +785,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
               >
                 <span aria-hidden="true">{'›'}</span>
               </button>
-              <span className="mivo-dv-slice-position" data-testid="mivo-dv-slice-position">
+              <span className="mihawk-dv-slice-position" data-testid="mihawk-dv-slice-position">
                 {status.imageIndex + 1} / {imageCount}
               </span>
             </div>
@@ -793,7 +793,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
         </div>
       </div>
 
-      <div className="mivo-dv-status" id={ids.status} role="status" aria-live="polite">
+      <div className="mihawk-dv-status" id={ids.status} role="status" aria-live="polite">
         {state.phase === 'scanning' && state.progress && (
           <span>{labels.scanning(state.progress.processed, state.progress.total)}</span>
         )}
@@ -803,7 +803,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
           </span>
         )}
         {state.skipped.length > 0 && !busy && (
-          <details className="mivo-dv-skipped">
+          <details className="mihawk-dv-skipped">
             <summary>{labels.skippedFiles(state.skipped.length)}</summary>
             <ul>
               {summarizeSkipped(state, labels).map(([reason, count]) => (
@@ -816,7 +816,7 @@ export const DicomViewer = forwardRef<DicomViewerHandle, DicomViewerProps>(funct
         )}
         {(status || volumeStatus) && (
           // Not announced: it changes on every drag step.
-          <span className="mivo-dv-readout" aria-live="off" data-testid="mivo-dv-readout">
+          <span className="mihawk-dv-readout" aria-live="off" data-testid="mihawk-dv-readout">
             {windowWidth !== undefined && windowCenter !== undefined && (
               <span>{labels.windowLevelValue(windowWidth, windowCenter)}</span>
             )}

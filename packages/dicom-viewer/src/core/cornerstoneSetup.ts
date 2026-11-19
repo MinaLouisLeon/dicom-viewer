@@ -15,7 +15,7 @@ import { DicomViewerError } from './errors';
 import type { RendererConfig } from './renderer';
 
 /** Shared by the 2D and 3D renderers. */
-export const PINCH_ZOOM_TOOL = 'MivoPinchZoom';
+export const PINCH_ZOOM_TOOL = 'MihawkPinchZoom';
 export const PINCH_ZOOM_BINDING = { numTouchPoints: 2 };
 
 /**
@@ -25,7 +25,7 @@ export const PINCH_ZOOM_BINDING = { numTouchPoints: 2 };
  * handles are never hit-tested and are drawn with zero size.
  */
 export class TranslateCrosshairsTool extends CrosshairsTool {
-  static override toolName = 'MivoTranslateCrosshairs';
+  static override toolName = 'MihawkTranslateCrosshairs';
 
   constructor(...args: ConstructorParameters<typeof CrosshairsTool>) {
     super(...args);

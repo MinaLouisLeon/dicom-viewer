@@ -46,8 +46,8 @@ describe('<DicomViewer />', () => {
   it('selects the pan tool using a shortcut in the image viewport', async () => {
     const user = userEvent.setup();
     render(<DicomViewer />);
-    await user.upload(screen.getByTestId('mivo-dv-file-input'), fixturePaths('single').map(fixtureFile));
-    const pane = screen.getByTestId('mivo-dv-viewport');
+    await user.upload(screen.getByTestId('mihawk-dv-file-input'), fixturePaths('single').map(fixtureFile));
+    const pane = screen.getByTestId('mihawk-dv-viewport');
     await waitFor(() => expect(pane).toHaveAttribute('data-visible', 'true'));
     pane.focus();
     await user.keyboard('p');
@@ -69,7 +69,7 @@ describe('<DicomViewer />', () => {
     render(<DicomViewer onSeriesDisplayed={onSeriesDisplayed} />);
 
     const files = [...fixturePaths('single'), ...fixturePaths('codecs'), 'invalid/not-dicom.txt'].map(fixtureFile);
-    await user.upload(screen.getByTestId('mivo-dv-file-input'), files);
+    await user.upload(screen.getByTestId('mihawk-dv-file-input'), files);
 
     await waitFor(() => expect(onSeriesDisplayed).toHaveBeenCalled());
     const nav = screen.getByRole('navigation', { name: 'Studies' });
@@ -79,13 +79,13 @@ describe('<DicomViewer />', () => {
     expect(seriesButtons[0]).toHaveAttribute('aria-pressed', 'true');
     expect(seriesButtons[0]).toHaveTextContent('#1 · IO · Uncompressed');
     expect(screen.getByText('1 file was skipped.')).toBeInTheDocument();
-    expect(screen.getByTestId('mivo-dv-viewport')).toHaveAttribute('data-visible', 'true');
+    expect(screen.getByTestId('mihawk-dv-viewport')).toHaveAttribute('data-visible', 'true');
   });
 
   it('switches series when another is selected', async () => {
     const user = userEvent.setup();
     render(<DicomViewer />);
-    await user.upload(screen.getByTestId('mivo-dv-file-input'), [...fixturePaths('single'), ...fixturePaths('codecs')].map(fixtureFile));
+    await user.upload(screen.getByTestId('mihawk-dv-file-input'), [...fixturePaths('single'), ...fixturePaths('codecs')].map(fixtureFile));
     const nav = await screen.findByRole('navigation', { name: 'Studies' });
     const [, j2k] = within(nav).getAllByRole('button');
     await user.click(j2k!);
@@ -97,7 +97,7 @@ describe('<DicomViewer />', () => {
     const user = userEvent.setup();
     const onError = vi.fn();
     render(<DicomViewer onError={onError} />);
-    await user.upload(screen.getByTestId('mivo-dv-file-input'), [fixtureFile('invalid/not-dicom.txt')]);
+    await user.upload(screen.getByTestId('mihawk-dv-file-input'), [fixtureFile('invalid/not-dicom.txt')]);
     expect(await screen.findByRole('alert')).toHaveTextContent(defaultLabels.errors.NO_DICOM_FILES);
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: 'NO_DICOM_FILES' }));
   });
@@ -105,7 +105,7 @@ describe('<DicomViewer />', () => {
   it('closes the study and returns to the drop zone', async () => {
     const user = userEvent.setup();
     render(<DicomViewer />);
-    await user.upload(screen.getByTestId('mivo-dv-file-input'), fixturePaths('single').map(fixtureFile));
+    await user.upload(screen.getByTestId('mihawk-dv-file-input'), fixturePaths('single').map(fixtureFile));
     await user.click(await screen.findByRole('button', { name: 'Close study' }));
     expect(screen.getByText(defaultLabels.dropZoneTitle)).toBeInTheDocument();
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
@@ -115,7 +115,7 @@ describe('<DicomViewer />', () => {
     fake.current = createFakeRenderer();
     const user = userEvent.setup();
     render(<DicomViewer />);
-    await user.upload(screen.getByTestId('mivo-dv-file-input'), fixturePaths('single').map(fixtureFile));
+    await user.upload(screen.getByTestId('mihawk-dv-file-input'), fixturePaths('single').map(fixtureFile));
     const cancel = await screen.findByRole('button', { name: 'Cancel' });
     expect(screen.getByRole('status')).toHaveTextContent(defaultLabels.loadingSeries);
     cancel.focus();
@@ -146,7 +146,7 @@ describe('<DicomViewer />', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'Ouvrir des fichiers' })).toBeInTheDocument();
-    await user.upload(screen.getByTestId('mivo-dv-file-input'), [fixtureFile('invalid/not-dicom.txt')]);
+    await user.upload(screen.getByTestId('mihawk-dv-file-input'), [fixtureFile('invalid/not-dicom.txt')]);
     expect(await screen.findByRole('alert')).toHaveTextContent('Aucune image DICOM.');
   });
 
@@ -175,11 +175,11 @@ describe('<DicomViewer />', () => {
       fake.current = createFakeRenderer();
       const user = userEvent.setup();
       render(<DicomViewer />);
-      await user.upload(screen.getByTestId('mivo-dv-file-input'), fixturePaths('stack').map(fixtureFile));
+      await user.upload(screen.getByTestId('mihawk-dv-file-input'), fixturePaths('stack').map(fixtureFile));
       await screen.findByRole('button', { name: 'Cancel' });
       expect(screen.getByRole('button', { name: 'Zoom in' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Pan' })).toBeDisabled();
-      expect(screen.getByTestId('mivo-dv-viewport')).toHaveAttribute('tabindex', '-1');
+      expect(screen.getByTestId('mihawk-dv-viewport')).toHaveAttribute('tabindex', '-1');
     });
 
     it('zooms and resets from the toolbar', async () => {
@@ -197,7 +197,7 @@ describe('<DicomViewer />', () => {
     it('navigates a stack with the slice controls', async () => {
       const { user, renderer } = await openStack();
       const nav = screen.getByRole('group', { name: defaultLabels.sliceControls });
-      expect(screen.getByTestId('mivo-dv-slice-position')).toHaveTextContent('1 / 12');
+      expect(screen.getByTestId('mihawk-dv-slice-position')).toHaveTextContent('1 / 12');
       expect(within(nav).getByRole('button', { name: 'Previous image' })).toBeDisabled();
       const slider = within(nav).getByRole('slider', { name: 'Image' });
       expect(slider).toHaveAttribute('aria-valuetext', 'Image 1 of 12');
@@ -206,7 +206,7 @@ describe('<DicomViewer />', () => {
       expect(renderer.scrollBy).toHaveBeenCalledWith(1);
 
       act(() => renderer.emit({ imageIndex: 11 }));
-      expect(screen.getByTestId('mivo-dv-slice-position')).toHaveTextContent('12 / 12');
+      expect(screen.getByTestId('mihawk-dv-slice-position')).toHaveTextContent('12 / 12');
       expect(slider).toHaveAttribute('aria-valuetext', 'Image 12 of 12');
       expect(within(nav).getByRole('button', { name: 'Next image' })).toBeDisabled();
     });
@@ -259,7 +259,7 @@ describe('<DicomViewer />', () => {
 
     it('shows window/level and zoom in the status bar', async () => {
       const { renderer } = await openStack();
-      const readout = screen.getByTestId('mivo-dv-readout');
+      const readout = screen.getByTestId('mihawk-dv-readout');
       expect(readout).toHaveTextContent('W 400 · L 40');
       expect(readout).toHaveTextContent('Zoom 100%');
       act(() => renderer.emit({ windowWidth: 1500.4, windowCenter: -600.6, zoom: 2.5 }));
@@ -298,7 +298,7 @@ describe('<DicomViewer />', () => {
     it('marks volume-capable series and switches to linked cross-sections and a 3D view', async () => {
       const { user, volume, ref } = await openCbct();
       const nav = screen.getByRole('navigation', { name: 'Studies' });
-      expect(within(nav).getAllByTestId('mivo-dv-volume-badge')).toHaveLength(1);
+      expect(within(nav).getAllByTestId('mihawk-dv-volume-badge')).toHaveLength(1);
 
       const layout = screen.getByRole('group', { name: defaultLabels.layoutGroup });
       await user.click(within(layout).getByRole('button', { name: '3D' }));
@@ -313,7 +313,7 @@ describe('<DicomViewer />', () => {
         defaultLabels.volumeViewportHelp,
       );
       expect(screen.queryByRole('application', { name: defaultLabels.imageViewport })).not.toBeInTheDocument();
-      expect(screen.getByTestId('mivo-dv-slice-axial')).toHaveTextContent('33 / 64');
+      expect(screen.getByTestId('mihawk-dv-slice-axial')).toHaveTextContent('33 / 64');
       expect(screen.getByRole('button', { name: 'Crosshairs' })).toHaveAttribute('aria-pressed', 'true');
     });
 
@@ -321,7 +321,7 @@ describe('<DicomViewer />', () => {
       const { user } = await openCbct();
       const nav = screen.getByRole('navigation', { name: 'Studies' });
       await user.click(within(nav).getAllByRole('button')[1]!);
-      const threeD = screen.getByTestId('mivo-dv-layout-3d');
+      const threeD = screen.getByTestId('mihawk-dv-layout-3d');
       await waitFor(() => expect(threeD).toBeDisabled());
       expect(threeD).toHaveAccessibleDescription(defaultLabels.volumeUnsupportedReasons['missing-slices']);
     });
@@ -347,7 +347,7 @@ describe('<DicomViewer />', () => {
       ]);
 
       act(() => volume.emit({ planes: { ...volume.status!.planes, axial: { index: 63, count: 64 } } }));
-      expect(screen.getByTestId('mivo-dv-slice-axial')).toHaveTextContent('64 / 64');
+      expect(screen.getByTestId('mihawk-dv-slice-axial')).toHaveTextContent('64 / 64');
     });
 
     it('rotates and zooms the 3D view from the keyboard and toolbar', async () => {
@@ -364,14 +364,14 @@ describe('<DicomViewer />', () => {
 
       await user.click(screen.getByRole('button', { name: 'Zoom out' }));
       expect(volume.zoomBy).toHaveBeenLastCalledWith('volume', 1 / 1.2);
-      expect(screen.getByTestId('mivo-dv-readout')).toHaveTextContent('3D · Zoom 100%');
+      expect(screen.getByTestId('mihawk-dv-readout')).toHaveTextContent('3D · Zoom 100%');
     });
 
     it('shows a notice in the 3D pane when volume rendering is unavailable', async () => {
       fakeVolume.current = createFakeVolumeRenderer({ autoFinish: true, volumeRendering: false });
       await openCbct({ initialLayout: '3d' });
       expect(screen.getByRole('note')).toHaveTextContent(defaultLabels.volumeRenderingUnavailable);
-      expect(screen.getByTestId('mivo-dv-pane-volume')).toHaveAttribute('tabindex', '-1');
+      expect(screen.getByTestId('mihawk-dv-pane-volume')).toHaveAttribute('tabindex', '-1');
       expect(screen.getByRole('application', { name: 'Axial' })).toHaveAttribute('tabindex', '0');
     });
 
