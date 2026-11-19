@@ -23,7 +23,7 @@ import {
   type WorkstationTool,
 } from './gridRenderer';
 import { MPR_SLOTS, cellCount, clampGrid, type GridLayout, type MprLayout } from './layouts';
-import { DEFAULT_WINDOW_PRESETS, type WindowPreset, type WindowValue } from './windowPresets';
+import { DEFAULT_WINDOW_PRESETS, autoWindowOptionsFor, type WindowPreset, type WindowValue } from './windowPresets';
 
 export type WorkstationPhase = 'idle' | 'scanning' | 'ready' | 'error';
 export type WorkstationTab = 'viewer' | 'map';
@@ -829,10 +829,11 @@ export class WorkstationSession {
     const target = this.displayed(cellId);
     if (!preset || !target) return false;
     const request = preset.window ?? (preset.id === 'auto' ? 'auto' : 'default');
+    const autoOptions = request === 'auto' ? autoWindowOptionsFor(this.findSeries(target.cell.seriesInstanceUid)?.summary.modality) : undefined;
     const applied =
       target.cell.mode === '2d'
-        ? this.gridRenderer?.setWindow(cellId, request) ?? false
-        : target.runtime.volumeRenderer?.setWindow?.(request) ?? false;
+        ? this.gridRenderer?.setWindow(cellId, request, autoOptions) ?? false
+        : target.runtime.volumeRenderer?.setWindow?.(request, autoOptions) ?? false;
     if (applied) {
       // Remember the window the preset produced; a later, different window clears the highlight.
       const status =

@@ -187,7 +187,10 @@ export interface VolumeRenderer {
    * (`default`), or one computed from the voxel values (`auto`). Returns false when it
    * cannot be applied. Optional for custom renderers.
    */
-  setWindow?(request: { width: number; center: number } | 'default' | 'auto'): boolean;
+  setWindow?(
+    request: { width: number; center: number } | 'default' | 'auto',
+    autoOptions?: { lowPercentile?: number; highPercentile?: number; ignoreBelow?: number },
+  ): boolean;
   /** Inverts the grey scale of the cross-sections. Optional for custom renderers. */
   setInvert?(invert: boolean): void;
   /** Average, maximum or minimum intensity over a slab of the given thickness. Optional. */

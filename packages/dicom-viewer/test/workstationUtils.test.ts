@@ -4,7 +4,7 @@ import { formatPersonName, orientationMarkers, readImageInfo } from '../src/work
 import { GRID_LAYOUTS, cellCount, clampGrid, parseGrid } from '../src/workstation/layouts';
 import { formatTag, isPrivateTag, lookupTag, normalizeTag } from '../src/workstation/tagDictionary';
 import { countTagNodes, filterTagNodes, readTagMap, tagNodesToJson } from '../src/workstation/tagMap';
-import { DEFAULT_WINDOW_PRESETS, computeAutoWindow, presetApplies } from '../src/workstation/windowPresets';
+import { DEFAULT_WINDOW_PRESETS, autoWindowOptionsFor, computeAutoWindow, presetApplies } from '../src/workstation/windowPresets';
 import { matchSlice } from '../src/workstation/workstationSession';
 import { fixtureFile } from './fixtures';
 
@@ -34,6 +34,24 @@ describe('computeAutoWindow', () => {
     const values = new Float32Array(2_000_000).map((_, index) => index / 2000);
     const window = computeAutoWindow(values, { maxSamples: 10_000 })!;
     expect(window.width).toBeGreaterThan(900);
+  });
+});
+
+describe('autoWindowOptionsFor', () => {
+  it('leaves out air and lung on CT and keeps the generic settings elsewhere', () => {
+    expect(autoWindowOptionsFor('CT')).toEqual({ lowPercentile: 5, highPercentile: 95, ignoreBelow: -500 });
+    expect(autoWindowOptionsFor('IO')).toEqual({});
+    // A CT slice: 40% air, fat around -100, soft tissue around 40, some bone at 700.
+    const values = [
+      ...Array.from({ length: 400 }, (_, i) => -1000 + (i % 7)),
+      ...Array.from({ length: 200 }, (_, i) => -120 + (i % 40)),
+      ...Array.from({ length: 330 }, (_, i) => 20 + (i % 50)),
+      ...Array.from({ length: 18 }, (_, i) => 600 + i * 10),
+    ];
+    const window = computeAutoWindow(values, autoWindowOptionsFor('CT'))!;
+    expect(window.center).toBeGreaterThan(-100);
+    expect(window.center).toBeLessThan(150);
+    expect(window.width).toBeLessThan(1000);
   });
 });
 

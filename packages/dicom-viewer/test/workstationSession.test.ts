@@ -93,10 +93,10 @@ describe('WorkstationSession', () => {
     await session.openFiles(stackFiles());
     const cellId = session.getState().activeCellId;
     expect(session.applyPreset('bone')).toBe(true);
-    expect(grid.setWindow).toHaveBeenLastCalledWith(cellId, { width: 2000, center: 500 });
+    expect(grid.setWindow).toHaveBeenLastCalledWith(cellId, { width: 2000, center: 500 }, undefined);
     expect(session.getState().cells[0]!.presetId).toBe('bone');
     expect(session.applyPreset('auto')).toBe(true);
-    expect(grid.setWindow).toHaveBeenLastCalledWith(cellId, 'auto');
+    expect(grid.setWindow).toHaveBeenLastCalledWith(cellId, 'auto', { lowPercentile: 5, highPercentile: 95, ignoreBelow: -500 });
     expect(session.getViews()[cellId]!.status?.windowWidth).toBe(1234);
     grid.emit(cellId, { windowWidth: 900, windowCenter: 100 });
     expect(session.getState().cells[0]!.presetId).toBeUndefined();

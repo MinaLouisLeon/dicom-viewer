@@ -75,12 +75,12 @@ describe('<DicomWorkstation />', () => {
     await waitFor(() => expect(ref.current!.getState().cells[0]!.phase).toBe('displayed'));
     await user.click(screen.getByTestId('mihawk-ws-window-menu'));
     await user.click(screen.getByTestId('mihawk-ws-preset-lung'));
-    expect(grid.renderer.setWindow).toHaveBeenLastCalledWith(expect.any(String), { width: 1500, center: -600 });
+    expect(grid.renderer.setWindow).toHaveBeenLastCalledWith(expect.any(String), { width: 1500, center: -600 }, undefined);
     expect(screen.getByTestId('mihawk-ws-preset-lung')).toHaveAttribute('aria-pressed', 'true');
     await user.keyboard('{Escape}');
     screen.getByTestId('mihawk-ws-cell-viewport').focus();
     await user.keyboard('1');
-    expect(grid.renderer.setWindow).toHaveBeenLastCalledWith(expect.any(String), 'auto');
+    expect(grid.renderer.setWindow).toHaveBeenLastCalledWith(expect.any(String), 'auto', expect.objectContaining({ ignoreBelow: -500 }));
     await user.keyboard('i');
     expect(grid.renderer.setTransform).toHaveBeenLastCalledWith(expect.any(String), { invert: true });
     await user.keyboard('l');

@@ -30,7 +30,7 @@ import {
   ensureInitialized,
   releaseImages,
 } from './cornerstoneSetup';
-import { computeAutoWindow } from '../workstation/windowPresets';
+import { autoWindowOptionsFor, computeAutoWindow } from '../workstation/windowPresets';
 import { DicomViewerError, abortError, throwIfAborted } from './errors';
 import {
   DEFAULT_MAX_VOLUME_BYTES,
@@ -203,6 +203,8 @@ export async function createCornerstoneVolumeRenderer(
   let files = new FileRegistry();
   let volumeId: string | undefined;
   let volumeImageIds: string[] = [];
+  /** Modality of the current volume, read before its datasets are released. */
+  let volumeModality: string | undefined;
   let volumeGeneration = 0;
   /**
    * Camera of the 3D view right after the volume was set. Cornerstone's resetCamera on a
@@ -492,6 +494,7 @@ export async function createCornerstoneVolumeRenderer(
       const plane = metaData.get('imagePlaneModule', firstImageId) as { rows?: number; columns?: number } | undefined;
       const estimatedBytes = imageIds.length * (plane?.rows ?? 0) * (plane?.columns ?? 0) * bytesPerVoxel(firstImageId);
       if (estimatedBytes > maxVolumeBytes) throw new DicomViewerError('VOLUME_TOO_LARGE');
+      volumeModality = (metaData.get('generalSeriesModule', firstImageId) as { modality?: string } | undefined)?.modality;
       // The volume loader needs synchronous access to every slice's metadata.
       await runBounded(uniqueFiles.slice(1), READ_CONCURRENCY, signal, loadDataset);
     } catch (error) {
@@ -730,7 +733,7 @@ export async function createCornerstoneVolumeRenderer(
       }
     },
 
-    setWindow(request): boolean {
+    setWindow(request, autoOptions): boolean {
       if (!shown || !volumeId) return false;
       let range: { lower: number; upper: number } | undefined;
       if (request === 'default') {
@@ -746,7 +749,7 @@ export async function createCornerstoneVolumeRenderer(
         const stride = Math.max(1, Math.floor(length / maxSamples));
         const samples = new Float32Array(Math.ceil(length / stride));
         for (let index = 0, out = 0; index < length; index += stride, out += 1) samples[out] = Number(voxels.getAtIndex(index));
-        const window = computeAutoWindow(samples);
+        const window = computeAutoWindow(samples, autoOptions ?? autoWindowOptionsFor(volumeModality));
         range = window ? utilities.windowLevel.toLowHighRange(window.width, window.center) : undefined;
       } else {
         range = utilities.windowLevel.toLowHighRange(Math.max(1, request.width), request.center);

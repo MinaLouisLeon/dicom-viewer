@@ -1,6 +1,6 @@
 import { DicomViewerError } from '../core/errors';
 import type { RendererConfig, StackImage, ViewportStatus } from '../core/renderer';
-import type { WindowValue } from './windowPresets';
+import type { AutoWindowOptions, WindowValue } from './windowPresets';
 
 /**
  * What the primary mouse button (or one finger) does in the workstation viewports.
@@ -106,7 +106,7 @@ export interface GridRenderer {
   panBy(cellId: string, dx: number, dy: number): void;
   adjustWindowLevel(cellId: string, widthSteps: number, centerSteps: number): void;
   /** Applies a window. Returns false when it cannot be applied (for example `auto` on colour images). */
-  setWindow(cellId: string, request: WindowRequest): boolean;
+  setWindow(cellId: string, request: WindowRequest, autoOptions?: AutoWindowOptions): boolean;
   setTransform(cellId: string, patch: Partial<CellTransform>): void;
   /** Restores zoom, pan, window, rotation, flips and invert. */
   resetView(cellId: string): void;

@@ -111,6 +111,16 @@ export function computeAutoWindow(
   return { width: high - low, center: (high + low) / 2 };
 }
 
+/**
+ * Auto settings per modality. For CT (Hounsfield units) air and lung (below −500 HU)
+ * are left out and the 5th–95th percentiles are used, which lands near a soft-tissue
+ * window that adapts to each image. Other modalities use the generic defaults.
+ */
+export function autoWindowOptionsFor(modality: string | undefined): AutoWindowOptions {
+  if (modality?.toUpperCase() === 'CT') return { lowPercentile: 5, highPercentile: 95, ignoreBelow: -500 };
+  return {};
+}
+
 /** Converts a window to the lower and upper values it maps to black and white. */
 export function windowToRange({ width, center }: WindowValue): { lower: number; upper: number } {
   return { lower: center - width / 2, upper: center + width / 2 };

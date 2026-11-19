@@ -46,7 +46,7 @@ export type {
 export type { CellStatus, CellTransform, SyncOptions, WorkstationTool } from './workstation/gridRenderer';
 export { GRID_LAYOUTS, MPR_LAYOUTS } from './workstation/layouts';
 export type { GridLayout, MprLayout } from './workstation/layouts';
-export { DEFAULT_WINDOW_PRESETS, computeAutoWindow, presetApplies } from './workstation/windowPresets';
+export { DEFAULT_WINDOW_PRESETS, autoWindowOptionsFor, computeAutoWindow, presetApplies } from './workstation/windowPresets';
 export type { AutoWindowOptions, WindowPreset, WindowValue } from './workstation/windowPresets';
 export { readTagMap, filterTagNodes, PATIENT_IDENTIFYING_TAGS } from './workstation/tagMap';
 export type { TagNode, TagMapOptions } from './workstation/tagMap';

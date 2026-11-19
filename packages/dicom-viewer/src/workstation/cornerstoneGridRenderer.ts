@@ -1,4 +1,4 @@
-import { Enums, RenderingEngine, eventTarget, imageLoader, utilities, type Types } from '@cornerstonejs/core';
+import { Enums, RenderingEngine, eventTarget, imageLoader, metaData, utilities, type Types } from '@cornerstonejs/core';
 import {
   AngleTool,
   ArrowAnnotateTool,
@@ -38,7 +38,7 @@ import {
   type WindowRequest,
   type WorkstationTool,
 } from './gridRenderer';
-import { computeAutoWindow } from './windowPresets';
+import { autoWindowOptionsFor, computeAutoWindow } from './windowPresets';
 
 type ToolGroup = NonNullable<ReturnType<typeof ToolGroupManager.createToolGroup>>;
 
@@ -548,14 +548,31 @@ export async function createCornerstoneGridRenderer(
       });
     },
 
-    setWindow(cellId, request: WindowRequest) {
+    setWindow(cellId, request: WindowRequest, autoOptions) {
       let applied = false;
       withViewport(cellId, (viewport) => {
         let range: { lower: number; upper: number } | undefined;
         if (request === 'default') range = defaultRange(viewport);
         else if (request === 'auto') {
+          const imageId = viewport.getCurrentImageId();
+          const shownId = viewport.getCornerstoneImage()?.imageId;
+          if (shownId && imageId && shownId !== imageId) {
+            // The requested slice is still decoding: measure it once it is on screen.
+            const cell = cells.get(cellId);
+            const element = cell?.element;
+            if (element) {
+              const onNewImage = () => {
+                element.removeEventListener(Enums.Events.STACK_NEW_IMAGE, onNewImage);
+                if (cells.get(cellId) === cell) renderer.setWindow(cellId, 'auto', autoOptions);
+              };
+              element.addEventListener(Enums.Events.STACK_NEW_IMAGE, onNewImage);
+              applied = true;
+              return;
+            }
+          }
           const values = modalityValues(viewport);
-          const window = values ? computeAutoWindow(values) : undefined;
+          const modality = (metaData.get('generalSeriesModule', imageId) as { modality?: string } | undefined)?.modality;
+          const window = values ? computeAutoWindow(values, autoOptions ?? autoWindowOptionsFor(modality)) : undefined;
           range = window ? utilities.windowLevel.toLowHighRange(window.width, window.center) : undefined;
         } else range = utilities.windowLevel.toLowHighRange(Math.max(1, request.width), request.center);
         if (!range) return;
