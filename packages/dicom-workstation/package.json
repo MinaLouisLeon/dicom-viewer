@@ -1,0 +1,73 @@
+{
+  "name": "@mihawksolutions/dicom-workstation",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "The complete Mihawk DICOM viewer app as one React component: tabs, viewport grid, MPR, presets, measurements, DICOM tag map and a mobile side menu. Built on @mihawksolutions/dicom-viewer.",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/types/vite.d.ts",
+      "import": "./dist/vite.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "node ./scripts/clean.mjs && vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@cornerstonejs/core": "5.19.4",
+    "@cornerstonejs/tools": "5.19.4",
+    "@mihawksolutions/dicom-viewer": "0.5.0",
+    "react": ">=18.2.0 <20",
+    "react-dom": ">=18.2.0 <20"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "keywords": [
+    "dicom",
+    "react",
+    "viewer",
+    "mpr",
+    "cbct",
+    "medical-imaging"
+  ],
+  "devDependencies": {
+    "@cornerstonejs/core": "5.19.4",
+    "@cornerstonejs/tools": "5.19.4",
+    "@mihawksolutions/dicom-viewer": "0.5.0",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.12",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "jsdom": "31.0.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  }
+}

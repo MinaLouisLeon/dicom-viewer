@@ -25,3 +25,14 @@ export type {
   VolumeView,
 } from './core/renderer';
 export type { VolumeSupport, VolumeUnsupportedReason } from './core/volumeGeometry';
+
+// ── Building blocks: brightness and contrast, DICOM tags, overlay information ──
+export { DEFAULT_WINDOW_PRESETS, autoWindowOptionsFor, computeAutoWindow, presetApplies } from './core/windowPresets';
+export type { AutoWindowOptions, WindowPreset, WindowValue } from './core/windowPresets';
+export { readTagMap, filterTagNodes, countTagNodes, tagNodesToJson, PATIENT_IDENTIFYING_TAGS } from './core/tagMap';
+export type { TagNode, TagMapOptions } from './core/tagMap';
+export { lookupTag, formatTag } from './core/tagDictionary';
+export { readImageInfo, orientationMarkers, directionLabel, formatPersonName } from './core/imageInfo';
+export type { ImageInfo, OrientationMarkers, DisplayTransform } from './core/imageInfo';
+export { VOLUME_PRESETS } from './core/renderer';
+export type { SlabMode, VolumeSlab } from './core/renderer';
