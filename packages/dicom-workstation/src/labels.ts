@@ -1,6 +1,7 @@
 import { defaultLabels, type DicomViewerLabels } from '@mihawksolutions/dicom-viewer/internal';
 import type { WorkstationTool } from './gridRenderer';
 import type { SlabMode } from '@mihawksolutions/dicom-viewer/internal';
+import type { ArchiveIssueReason } from './archive';
 import type { MprLayout } from './layouts';
 
 /**
@@ -122,10 +123,16 @@ export interface WorkstationLabels extends Omit<DicomViewerLabels, 'tools'> {
   mapInstance: string;
   mapPrivacyNote: string;
   mapNoMatches: string;
+
+  // ZIP archives
+  /** `processed`/`total` are bytes of archive read. */
+  openingArchive: (processed: number, total: number) => string;
+  archiveIssues: Record<ArchiveIssueReason, (count: number) => string>;
 }
 
 export const defaultWorkstationLabels: WorkstationLabels = {
   ...defaultLabels,
+  dropZoneHint: 'Drop files, a folder or a ZIP archive here, or use the buttons above. ZIP archives are opened in this browser.',
   appTitle: 'DICOM Viewer',
   menu: 'Menu',
   closeMenu: 'Close menu',
@@ -277,6 +284,15 @@ export const defaultWorkstationLabels: WorkstationLabels = {
   mapInstance: 'File',
   mapPrivacyNote: 'Tags are read in this browser from the local file.',
   mapNoMatches: 'No attributes match the search.',
+
+  openingArchive: (processed, total) => `Opening ZIP… ${Math.round((processed / Math.max(1, total)) * 100)}%`,
+  archiveIssues: {
+    unreadable: (count) => (count === 1 ? 'A ZIP archive or entry could not be read.' : `${count} ZIP archives or entries could not be read.`),
+    encrypted: (count) => (count === 1 ? '1 file in the ZIP is password protected.' : `${count} files in the ZIP are password protected.`),
+    'unsupported-compression': (count) => (count === 1 ? '1 file in the ZIP uses an unsupported compression method.' : `${count} files in the ZIP use an unsupported compression method.`),
+    'unsupported-browser': (count) => `This browser cannot unpack compressed ZIP files (${count} skipped). Update the browser or unzip the archive first.`,
+    'too-large': (count) => `The ZIP is larger than this app opens at once; ${count} file${count === 1 ? ' was' : 's were'} left out.`,
+  },
 };
 
 export function resolveWorkstationLabels(overrides?: Partial<WorkstationLabels>): WorkstationLabels {
@@ -301,5 +317,6 @@ export function resolveWorkstationLabels(overrides?: Partial<WorkstationLabels>)
     slabModes: { ...base.slabModes, ...overrides.slabModes },
     volumePresets: { ...base.volumePresets, ...overrides.volumePresets },
     mapColumns: { ...base.mapColumns, ...overrides.mapColumns },
+    archiveIssues: { ...base.archiveIssues, ...overrides.archiveIssues },
   };
 }

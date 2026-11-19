@@ -47,6 +47,7 @@ Set up Vite with the `mihawkDicomViewer()` plugin, as described in the [Quicksta
 | Show / hide | Switches for measurements, arrow notes and cross-references. Hidden measurements are kept; drawing a new one shows them again. |
 | Overlay | Corner information (series, study, image number, slice thickness and location, window, zoom, transforms) and orientation markers. Patient name, ID, sex, age and institution are shown only after the user turns on **Show patient details**. |
 | Output | Save the active viewport (with measurements and overlay) as a PNG, and full screen. |
+| ZIP archives | Pick, drop or pass a `.zip` and the DICOM files inside open directly. Archives are unpacked in the browser, read from their central directory, so streamed and ZIP64 archives work. Stored entries are read in place and deflated ones are inflated with the browser's `DecompressionStream`. Nested archives open up to two levels deep. Encrypted entries, unsupported compression, damaged archives and archives over the limits (`maxArchiveBytes`, default 4 GiB, and 100,000 entries) are reported in the status bar. On phones, choosing a ZIP with **Open files** avoids the browser's folder-upload warning. |
 
 ## Phone, tablet and desktop
 
@@ -69,7 +70,8 @@ Set `menuMode="sidemenu"` or `menuMode="toolbar"` to force one presentation.
 | `initialGrid` | Grid on mount, for example `{ rows: 2, columns: 2 }`. |
 | `initialTool` | Any workstation tool, for example `'length'`. |
 | `windowPresets` | Replace the brightness and contrast presets. Each preset has an `id`, an optional fixed `window` (`{ width, center }`), optional `modalities`, and an optional digit `shortcut`. Name it through `labels.presets[id]`. |
-| `features` | Turn parts off: `map`, `openFiles`, `seriesPanel`, `layouts`, `mpr`, `measurements`, `presets`, `transforms`, `cine`, `sync`, `referenceLines`, `overlay`, `export`, `fullscreen`. |
+| `features` | Turn parts off: `map`, `openFiles`, `seriesPanel`, `layouts`, `mpr`, `measurements`, `presets`, `transforms`, `cine`, `sync`, `referenceLines`, `overlay`, `export`, `fullscreen`, `archives`. |
+| `maxArchiveBytes` | Largest total uncompressed size read from ZIP archives. Default 4 GiB. |
 | `allowPatientInfo` | Set `false` to never show patient details. The overlay and tag map hide them and the toggle disappears. |
 | `title`, `headerStart`, `headerEnd` | Brand the header and add host controls (a back button, an account menu). |
 | `theme` | `dark` (default), `light` or `auto`. Override the `--mihawk-ws-*` custom properties for your own colours. |

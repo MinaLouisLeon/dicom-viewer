@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Open ZIP archives: select, drop or pass a `.zip` and the app opens the DICOM files inside it, in the browser, without uploading anything. Archives are read from their central directory, so streamed archives (data descriptors) and ZIP64 archives over 4 GB work. Stored entries are read straight from the archive and deflated entries are inflated with the browser's built-in `DecompressionStream`, so no new dependency is needed. Archives inside archives are opened up to two levels deep, and folders and clutter (`__MACOSX`, `._*`, `.DS_Store`, `Thumbs.db`) are ignored.
+- Password-protected entries, unsupported compression methods, damaged archives and archives over the limits are reported in the status bar (and with the error, when nothing could be opened) instead of failing the whole selection.
+- Added `features.archives` (default on) and `maxArchiveBytes` (default 4 GiB of uncompressed data, plus a limit of 100,000 entries). The progress screen shows "Opening ZIP…" while an archive is read.
+- Exported `expandArchives`, `isZipArchive`, `DEFAULT_ARCHIVE_LIMITS` and the `ArchiveIssue`, `ArchiveIssueReason`, `ArchiveLimits` and `ExpandResult` types.
+
 ## 0.1.0 (unreleased)
 
 First release of the ready app as its own package. It needs `@mihawksolutions/dicom-viewer` 0.5.0 as a peer.

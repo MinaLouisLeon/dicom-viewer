@@ -19,6 +19,8 @@ export type {
 } from './workstationSession';
 export type { AnnotationVisibility, CellStatus, CellTransform, SyncOptions, WorkstationTool } from './gridRenderer';
 export { GRID_LAYOUTS, MPR_LAYOUTS } from './layouts';
+export { DEFAULT_ARCHIVE_LIMITS, expandArchives, isZipArchive } from './archive';
+export type { ArchiveIssue, ArchiveIssueReason, ArchiveLimits, ExpandResult } from './archive';
 export type { GridLayout, MprLayout } from './layouts';
 
 // Commonly used with the workstation; re-exported so an app needs only this package's import.
