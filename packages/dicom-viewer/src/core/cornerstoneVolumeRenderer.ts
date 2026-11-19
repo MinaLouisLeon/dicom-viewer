@@ -30,6 +30,7 @@ import {
   ensureInitialized,
   releaseImages,
 } from './cornerstoneSetup';
+import { computeAutoWindow } from '../workstation/windowPresets';
 import { DicomViewerError, abortError, throwIfAborted } from './errors';
 import {
   DEFAULT_MAX_VOLUME_BYTES,
@@ -204,6 +205,7 @@ export async function createCornerstoneVolumeRenderer(
   const initialPlaneVoi = new Map<VolumePlane, { lower: number; upper: number }>();
   let shown = false;
   let destroyed = false;
+  let invert = false;
 
   const getViewport = (view: VolumeView): Types.IViewport | undefined => engine?.getViewport(viewportIds[view]);
   const getVolumeViewport = (view: VolumeView) => getViewport(view) as Types.IVolumeViewport | undefined;
@@ -323,6 +325,7 @@ export async function createCornerstoneVolumeRenderer(
       windowCenter: windowLevel?.windowCenter,
       zoom: { axial: zoomOf('axial'), sagittal: zoomOf('sagittal'), coronal: zoomOf('coronal'), volume: zoomOf('volume') },
       volumeRendering,
+      invert,
     };
   };
 
@@ -372,6 +375,7 @@ export async function createCornerstoneVolumeRenderer(
     volumeId = undefined;
     volumeImageIds = [];
     volumeRendering = false;
+    invert = false;
     initialVolumeCamera = undefined;
     initialPlaneVoi.clear();
     if (hadVolume) callbacks.onStatusChange?.(undefined);
@@ -669,13 +673,54 @@ export async function createCornerstoneVolumeRenderer(
       }
     },
 
+    setWindow(request): boolean {
+      if (!shown || !volumeId) return false;
+      let range: { lower: number; upper: number } | undefined;
+      if (request === 'default') {
+        range = initialPlaneVoi.get('axial');
+      } else if (request === 'auto') {
+        const volume = cache.getVolume(volumeId) as
+          | { voxelManager?: { getAtIndex(index: number): unknown; getScalarDataLength(): number }; numberOfComponents?: number }
+          | undefined;
+        const voxels = volume?.voxelManager;
+        if (!voxels || (volume?.numberOfComponents ?? 1) > 1) return false;
+        const length = voxels.getScalarDataLength();
+        const maxSamples = 262_144;
+        const stride = Math.max(1, Math.floor(length / maxSamples));
+        const samples = new Float32Array(Math.ceil(length / stride));
+        for (let index = 0, out = 0; index < length; index += stride, out += 1) samples[out] = Number(voxels.getAtIndex(index));
+        const window = computeAutoWindow(samples);
+        range = window ? utilities.windowLevel.toLowHighRange(window.width, window.center) : undefined;
+      } else {
+        range = utilities.windowLevel.toLowHighRange(Math.max(1, request.width), request.center);
+      }
+      if (!range) return false;
+      for (const plane of VOLUME_PLANES) {
+        const viewport = getPlane(plane);
+        viewport?.setProperties({ voiRange: range });
+        viewport?.render();
+      }
+      return true;
+    },
+
+    setInvert(value: boolean): void {
+      if (!shown) return;
+      invert = value;
+      for (const plane of VOLUME_PLANES) {
+        const viewport = getPlane(plane);
+        viewport?.setProperties({ invert: value });
+        viewport?.render();
+      }
+      scheduleStatus();
+    },
+
     resetView(): void {
       if (!shown) return;
       for (const plane of VOLUME_PLANES) {
         const viewport = getPlane(plane);
         // Reset from the initial range without asking Cornerstone to decode the middle slice again.
         const voiRange = initialPlaneVoi.get(plane);
-        if (voiRange) viewport?.setProperties({ voiRange });
+        if (voiRange) viewport?.setProperties({ voiRange, invert: false });
         viewport?.resetCamera();
       }
       const volume3d = getVolumeViewport('volume');
@@ -684,6 +729,7 @@ export async function createCornerstoneVolumeRenderer(
         else volume3d.resetCamera();
         volume3d.setProperties({ preset: VOLUME_PRESET });
       }
+      invert = false;
       crosshairsTool()?.resetCrosshairs?.();
       engine?.renderViewports(presentViews().map((view) => viewportIds[view]));
       scheduleStatus();

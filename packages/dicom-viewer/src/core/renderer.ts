@@ -122,6 +122,8 @@ export interface VolumeStatus {
   zoom: Record<VolumeView, number>;
   /** False when the 3D view is turned off or the browser cannot render it; cross-sections still work. */
   volumeRendering: boolean;
+  /** True when the cross-sections are shown inverted. */
+  invert?: boolean;
 }
 
 export interface VolumeLoadProgress {
@@ -155,6 +157,14 @@ export interface VolumeRenderer {
   rotateBy(yaw: number, pitch: number): void;
   /** Same step semantics as `StackRenderer.adjustWindowLevel`; applies to all cross-sections. */
   adjustWindowLevel(widthSteps: number, centerSteps: number): void;
+  /**
+   * Sets the window of every cross-section: a width and center, the file's own window
+   * (`default`), or one computed from the voxel values (`auto`). Returns false when it
+   * cannot be applied. Optional for custom renderers.
+   */
+  setWindow?(request: { width: number; center: number } | 'default' | 'auto'): boolean;
+  /** Inverts the grey scale of the cross-sections. Optional for custom renderers. */
+  setInvert?(invert: boolean): void;
   /** Centres the cross-sections and restores zoom, pan, window/level and the 3D orientation. */
   resetView(): void;
   getStatus(): VolumeStatus | undefined;

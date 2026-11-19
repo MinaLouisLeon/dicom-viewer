@@ -6,7 +6,7 @@ Release target: **0.5.0**.
 - [Live demo](https://mihawk-solutions.github.io/dicom-viewer/demo/)
 
 - `packages/dicom-viewer`: the npm package. See its [README](packages/dicom-viewer/README.md).
-- `apps/demo`: standalone React + Vite demo that uses the package's public API.
+- `apps/demo`: standalone React + Vite web app. It renders `<DicomWorkstation />`, the full viewer app (tabs, viewport grid, side menu, presets, measurements, DICOM tag map), which other React apps can embed as one component.
 - `apps/docs`: Astro Starlight documentation for the package.
 - `fixtures/`: synthetic DICOM test data only. See [fixtures/README.md](fixtures/README.md).
 - `scripts/`: fixture generator and clean-consumer smoke test.

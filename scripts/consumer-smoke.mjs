@@ -83,7 +83,7 @@ try {
   writeFileSync(path.join(app, 'index.html'), '<!doctype html><html lang="en"><head><meta charset="UTF-8" /><link rel="icon" href="data:," /><title>consumer</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>\n');
   writeFileSync(path.join(app, 'src', 'main.tsx'), [
     "import '@mihawksolutions/dicom-viewer/styles.css';",
-    "import { DEFAULT_CODEC_BASE_PATH, DicomViewer, type DicomViewerHandle, type ViewerLayout, type ViewerState } from '@mihawksolutions/dicom-viewer';",
+    "import { DEFAULT_CODEC_BASE_PATH, DicomViewer, DicomWorkstation, type DicomViewerHandle, type DicomWorkstationHandle, type ViewerLayout, type ViewerState, type WorkstationState } from '@mihawksolutions/dicom-viewer';",
     "import { useRef, useState } from 'react';",
     "import { createRoot } from 'react-dom/client';",
     '',
@@ -105,7 +105,21 @@ try {
     '  </>;',
     '}',
     '',
-    "createRoot(document.getElementById('root')!).render(<App />);",
+    '// The full app as one component (open with ?app=workstation).',
+    'function Workstation() {',
+    '  const ref = useRef<DicomWorkstationHandle>(null);',
+    "  const [status, setStatus] = useState('idle');",
+    '  const onState = (state: WorkstationState) => setStatus(`${state.phase} (${state.grid.rows}x${state.grid.columns})`);',
+    '  return <div style={{ height: "100vh" }}>',
+    '    <DicomWorkstation ref={ref} onStateChange={onState} title="Host app"',
+    '      headerEnd={<button onClick={() => ref.current?.clear()}>Host reset</button>}',
+    '      codecBasePath={import.meta.env.BASE_URL + DEFAULT_CODEC_BASE_PATH.slice(1)} />',
+    '    <output aria-label="Workstation state" hidden>{status}</output>',
+    '  </div>;',
+    '}',
+    '',
+    "const useWorkstation = new URLSearchParams(location.search).get('app') === 'workstation';",
+    "createRoot(document.getElementById('root')!).render(useWorkstation ? <Workstation /> : <App />);",
     '',
   ].join('\n'));
 
@@ -127,6 +141,8 @@ try {
   check('build emits viewer CSS', out.some((f) => f.endsWith('.css') && readFileSync(path.join(dist, f), 'utf8').includes('.mihawk-dv')));
   check('Cornerstone is code-split from the entry chunk', out.some((f) => /cornerstoneRenderer.*\.js$/.test(f)));
   check('3D volume code is a separate lazy chunk', out.some((f) => /cornerstoneVolumeRenderer.*\.js$/.test(f)));
+  check('build emits workstation CSS', out.some((f) => f.endsWith('.css') && readFileSync(path.join(dist, f), 'utf8').includes('.mihawk-ws')));
+  check('workstation grid renderer is a separate lazy chunk', out.some((f) => /cornerstoneGridRenderer.*\.js$/.test(f)));
 } finally {
   if (keep) console.log(`\nConsumer files kept at: ${work}\nFrom the app folder, run npx vite preview and open ${base}`);
   else rmSync(work, { recursive: true, force: true });

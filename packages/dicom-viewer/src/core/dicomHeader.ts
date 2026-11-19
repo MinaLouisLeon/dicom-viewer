@@ -184,15 +184,15 @@ export function extractHeader(dataSet: DataSet): HeaderReadResult {
 }
 
 /**
- * Reads the header of a DICOM Part 10 file, stopping before Pixel Data.
+ * Reads and parses a DICOM Part 10 file up to (not including the value of) Pixel Data.
  * Starts with a small slice and grows it only when the header does not fit, so large
- * files are never copied in full just to be grouped.
+ * files are never copied in full. Resolves undefined when the file is not DICOM.
  */
-export async function readDicomHeader(
+export async function readHeaderDataSet(
   blob: Blob,
-  options: { signal?: AbortSignal; readRange?: ReadRange } = {},
-): Promise<HeaderReadResult> {
-  const { signal, readRange = defaultReadRange } = options;
+  options: { signal?: AbortSignal; readRange?: ReadRange; vrCallback?: (tag: string) => string } = {},
+): Promise<DataSet | undefined> {
+  const { signal, readRange = defaultReadRange, vrCallback } = options;
   let length = Math.min(blob.size, INITIAL_READ_BYTES);
 
   for (;;) {
@@ -200,26 +200,34 @@ export async function readDicomHeader(
     const buffer = await readRange(blob, 0, length);
     throwIfAborted(signal);
     const bytes = new Uint8Array(buffer);
-    if (!hasPart10Preamble(bytes)) return { kind: 'not-dicom' };
+    if (!hasPart10Preamble(bytes)) return undefined;
 
     const isWholeFile = length >= blob.size;
     let dataSet: DataSet | undefined;
     try {
-      dataSet = parseDicom(bytes, { untilTag: PIXEL_DATA_TAG });
+      dataSet = parseDicom(bytes, vrCallback ? { untilTag: PIXEL_DATA_TAG, vrCallback } : { untilTag: PIXEL_DATA_TAG });
     } catch {
       // Either not parseable, or parsing ran past the end of the slice and needs more bytes.
-      if (isWholeFile) return { kind: 'not-dicom' };
+      if (isWholeFile) return undefined;
     }
 
     if (dataSet) {
       const reachedPixelData = Boolean(dataSet.elements[PIXEL_DATA_TAG]);
       if (isWholeFile || (reachedPixelData && elementsWithinBuffer(dataSet, bytes.length))) {
-        return extractHeader(dataSet);
+        return dataSet;
       }
     }
 
-    if (length >= MAX_HEADER_BYTES) return { kind: 'not-dicom' };
+    if (length >= MAX_HEADER_BYTES) return undefined;
     length = Math.min(blob.size, length * 4, MAX_HEADER_BYTES);
   }
 }
 
+/** Reads the header of a DICOM Part 10 file, stopping before Pixel Data. */
+export async function readDicomHeader(
+  blob: Blob,
+  options: { signal?: AbortSignal; readRange?: ReadRange } = {},
+): Promise<HeaderReadResult> {
+  const dataSet = await readHeaderDataSet(blob, options);
+  return dataSet ? extractHeader(dataSet) : { kind: 'not-dicom' };
+}
