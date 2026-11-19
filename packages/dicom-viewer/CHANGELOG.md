@@ -17,6 +17,7 @@
 - Added "1 large on top + 2" and "1 large on the left + 2" grids. Shrinking the grid keeps the active viewport.
 - Added MPR arrangements with a plane picker on every pane, thick-slab AVG/MIP/MinIP (AVG 10 mm by default), an orthogonal/oblique switch, view-direction badges and edge markers, an orientation cube and a 3D style picker. Cross-references show in MPR whatever tool is selected and are on by default.
 - Added show/hide switches for measurements and arrow notes, and a cine loop switch.
+- Axial stacks now open head first (most superior slice as image 1), as scanners and most viewers present them, whichever way the slice normal points. Sagittal and coronal stacks keep their geometric order. This also applies to `<DicomViewer />`.
 - Auto contrast on CT leaves out air and lung (below −500 HU) and uses the 5th–95th percentiles, which gives a soft-tissue window that adapts to each image. Auto now waits for a slice that is still decoding instead of measuring the previous one. Checked on a real abdomen–pelvis CT (48 axial and 25 coronal slices).
 - The volume renderer gains optional `setSlab`, `setOblique`, `setVolumePreset` and `setCrosshairsVisible`, and reports slab, oblique, preset and per-view orientation in its status. The crosshairs tool rotates only when `allowRotation` is configured.
 

@@ -143,6 +143,8 @@ Full reference: `apps/docs/src/content/docs/workstation.md` (published under **W
 | Toolbar | Select tool, zoom in or out, reset view |
 | Slice bar (stacks only) | Previous and next buttons, slider, position |
 
+Stacks are ordered by patient geometry. Axial stacks run head first; sagittal and coronal stacks run along the slice normal. Without geometry, Instance Number decides.
+
 When the image is focused (Tab or click), the keyboard works as follows. Arrow keys apply the selected tool. With window/level, Left and Right narrow or widen the window, and Up and Down raise or lower the level, in steps of 5% of the current width. With pan, the arrows move the image. With zoom, Up and Right zoom in. With scroll, the arrows change the image. Page Up and Page Down change the image, Home and End go to the first and last image, `+` and `-` zoom, and `R` resets zoom, pan and window/level. Shift makes each step larger. The image has an accessible description of these keys (`labels.imageViewportHelp`).
 
 With the image or a cross-section focused, press `W` for Window/Level, `P` for Pan, `Z` for Zoom, and `S` for Scroll. Press `C` for Crosshairs in a cross-section. The toolbar has one Tab stop. Use Left and Right to move between enabled buttons, Home and End to jump to either end, and Enter or Space to activate a button.
