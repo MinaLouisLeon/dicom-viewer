@@ -1799,3 +1799,9 @@
 .mihawk-ws-cube-face[data-tone='x'] { background: rgba(160, 70, 70, 0.85); }
 .mihawk-ws-cube-face[data-tone='y'] { background: rgba(60, 130, 80, 0.85); }
 .mihawk-ws-cube-face[data-tone='z'] { background: rgba(60, 90, 170, 0.85); }
+
+.mihawk-ws-status-warning {
+  color: #f0b429;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -30,6 +30,8 @@ export interface WorkstationFeatures {
   /** Save the active viewport as a PNG image. */
   export: boolean;
   fullscreen: boolean;
+  /** Open ZIP archives (selected, dropped or passed in), in the browser. */
+  archives: boolean;
 }
 
 export const DEFAULT_FEATURES: WorkstationFeatures = {
@@ -47,6 +49,7 @@ export const DEFAULT_FEATURES: WorkstationFeatures = {
   overlay: true,
   export: true,
   fullscreen: true,
+  archives: true,
 };
 
 export type SizeClass = 'phone' | 'tablet' | 'desktop';
