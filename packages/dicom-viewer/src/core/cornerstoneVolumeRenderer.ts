@@ -165,17 +165,17 @@ export async function createCornerstoneVolumeRenderer(
 
   instanceCounter += 1;
   const id = instanceCounter;
-  const engineId = `mivo-dv-volume-engine-${id}`;
+  const engineId = `mihawk-dv-volume-engine-${id}`;
   const viewportIds: Record<VolumeView, string> = {
-    axial: `mivo-dv-axial-${id}`,
-    sagittal: `mivo-dv-sagittal-${id}`,
-    coronal: `mivo-dv-coronal-${id}`,
-    volume: `mivo-dv-volume-${id}`,
+    axial: `mihawk-dv-axial-${id}`,
+    sagittal: `mihawk-dv-sagittal-${id}`,
+    coronal: `mihawk-dv-coronal-${id}`,
+    volume: `mihawk-dv-volume-${id}`,
   };
   const planeByViewportId = new Map(VOLUME_PLANES.map((plane) => [viewportIds[plane], plane]));
-  const mprGroupId = `mivo-dv-mpr-tools-${id}`;
-  const volumeGroupId = `mivo-dv-3d-tools-${id}`;
-  const voiSyncId = `mivo-dv-voi-sync-${id}`;
+  const mprGroupId = `mihawk-dv-mpr-tools-${id}`;
+  const volumeGroupId = `mihawk-dv-3d-tools-${id}`;
+  const voiSyncId = `mihawk-dv-voi-sync-${id}`;
   const maxVolumeBytes = config.maxVolumeBytes ?? DEFAULT_MAX_VOLUME_BYTES;
   const wantVolumeRendering = config.volumeRendering !== false;
 
@@ -464,7 +464,7 @@ export async function createCornerstoneVolumeRenderer(
     }
 
     // 3. Create and stream the volume.
-    const currentVolumeId = `cornerstoneStreamingImageVolume:mivo-dv-${id}-${generation}`;
+    const currentVolumeId = `cornerstoneStreamingImageVolume:mihawk-dv-${id}-${generation}`;
     volumeId = currentVolumeId;
     let volume: Types.IImageVolume & {
       load?: (callback: (event: { framesLoaded: number; totalNumFrames: number }) => void) => void;

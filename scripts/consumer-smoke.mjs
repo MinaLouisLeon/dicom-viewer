@@ -41,7 +41,7 @@ const check = (label, ok) => {
   if (!ok) failures.push(label);
 };
 
-const work = mkdtempSync(path.join(tmpdir(), 'mivo-dv-consumer-'));
+const work = mkdtempSync(path.join(tmpdir(), 'mihawk-dv-consumer-'));
 try {
   run('npm', ['run', 'build'], pkgDir);
   const packJson = run('npm', ['pack', '--json', '--pack-destination', work], pkgDir);
@@ -60,7 +60,7 @@ try {
   mkdirSync(path.join(app, 'src'), { recursive: true });
   const v = versions();
   writeFileSync(path.join(app, 'package.json'), JSON.stringify({
-    name: 'mivo-dv-clean-consumer',
+    name: 'mihawk-dv-clean-consumer',
     private: true,
     type: 'module',
     scripts: { build: 'tsc --noEmit && vite build' },
@@ -73,11 +73,11 @@ try {
     include: ['src', 'vite.config.ts'],
   }, null, 2));
   writeFileSync(path.join(app, 'vite.config.ts'), [
-    "import { mivoDicomViewer } from '@mihawksolutions/dicom-viewer/vite';",
+    "import { mihawkDicomViewer } from '@mihawksolutions/dicom-viewer/vite';",
     "import react from '@vitejs/plugin-react';",
     "import { defineConfig } from 'vite';",
     '',
-    `export default defineConfig({ base: '${base}', plugins: [react(), mivoDicomViewer()] });`,
+    `export default defineConfig({ base: '${base}', plugins: [react(), mihawkDicomViewer()] });`,
     '',
   ].join('\n'));
   writeFileSync(path.join(app, 'index.html'), '<!doctype html><html lang="en"><head><meta charset="UTF-8" /><link rel="icon" href="data:," /><title>consumer</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>\n');
@@ -121,10 +121,10 @@ try {
     .filter((url) => !url.startsWith('data:'));
   check('HTML references emitted assets under the Vite base', assetUrls.length >= 2 && assetUrls.every((url) => url.startsWith(base) && out.includes(url.slice(base.length))));
   for (const codec of ['openjpegwasm_decode.wasm', 'charlswasm_decode.wasm', 'libjpegturbowasm_decode.wasm', 'openjphjs.wasm', 'jpegxlwasm_decode.wasm']) {
-    check(`build emits mivo-dicom-viewer/codecs/${codec}`, out.includes(`mivo-dicom-viewer/codecs/${codec}`));
+    check(`build emits mihawk-dicom-viewer/codecs/${codec}`, out.includes(`mihawk-dicom-viewer/codecs/${codec}`));
   }
   check('build emits the decode worker', out.some((f) => /decodeImageFrameWorker.*\.js$/.test(f)));
-  check('build emits viewer CSS', out.some((f) => f.endsWith('.css') && readFileSync(path.join(dist, f), 'utf8').includes('.mivo-dv')));
+  check('build emits viewer CSS', out.some((f) => f.endsWith('.css') && readFileSync(path.join(dist, f), 'utf8').includes('.mihawk-dv')));
   check('Cornerstone is code-split from the entry chunk', out.some((f) => /cornerstoneRenderer.*\.js$/.test(f)));
   check('3D volume code is a separate lazy chunk', out.some((f) => /cornerstoneVolumeRenderer.*\.js$/.test(f)));
 } finally {

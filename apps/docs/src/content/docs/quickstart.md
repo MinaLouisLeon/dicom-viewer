@@ -14,12 +14,12 @@ To try a source checkout before publication, run `npm run build:package` and `np
 Add the viewer plugin to `vite.config.ts` so Vite can bundle the decode workers and serve the WASM codecs.
 
 ```ts
-import { mivoDicomViewer } from '@mihawksolutions/dicom-viewer/vite';
+import { mihawkDicomViewer } from '@mihawksolutions/dicom-viewer/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [react(), mivoDicomViewer()],
+  plugins: [react(), mihawkDicomViewer()],
 });
 ```
 

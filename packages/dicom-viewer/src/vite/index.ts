@@ -7,7 +7,7 @@
  *  - pre-bundles the CommonJS codec wrappers the worker imports,
  *  - maps Node's `events` module to a browser polyfill that Cornerstone's dependencies need,
  *  - serves the codec `.wasm` files in dev and emits them into the production build,
- *    under `<base>mivo-dicom-viewer/codecs/`, which is where the viewer looks by default.
+ *    under `<base>mihawk-dicom-viewer/codecs/`, which is where the viewer looks by default.
  *
  * Nothing in this plugin fetches remote resources; all codecs ship with the host app.
  */
@@ -18,12 +18,12 @@ import type { Plugin, ResolvedConfig } from 'vite';
 
 import { CODEC_DIRECTORY } from '../core/assetPaths';
 
-export interface MivoDicomViewerPluginOptions {
+export interface MihawkDicomViewerPluginOptions {
   /**
    * Directory (relative to Vite `base`) where codec files are served and emitted.
    * Change it only if it clashes with your app; then pass the same value to the
    * viewer's `codecBasePath` prop (prefixed with your `base`).
-   * @default 'mivo-dicom-viewer/codecs'
+   * @default 'mihawk-dicom-viewer/codecs'
    */
   codecDirectory?: string;
 }
@@ -78,7 +78,7 @@ function normalizeDirectory(dir: string): string {
   return dir.replace(/^\/+|\/+$/g, '');
 }
 
-export function mivoDicomViewer(options: MivoDicomViewerPluginOptions = {}): Plugin {
+export function mihawkDicomViewer(options: MihawkDicomViewerPluginOptions = {}): Plugin {
   const codecDirectory = normalizeDirectory(options.codecDirectory ?? CODEC_DIRECTORY);
   const resolveCodec = createCodecResolver();
   let resolved: ResolvedConfig | undefined;
@@ -93,7 +93,7 @@ export function mivoDicomViewer(options: MivoDicomViewerPluginOptions = {}): Plu
   }
 
   return {
-    name: 'mivo-dicom-viewer',
+    name: 'mihawk-dicom-viewer',
     enforce: 'pre',
 
     config() {
@@ -147,4 +147,4 @@ export function mivoDicomViewer(options: MivoDicomViewerPluginOptions = {}): Plu
   };
 }
 
-export default mivoDicomViewer;
+export default mihawkDicomViewer;

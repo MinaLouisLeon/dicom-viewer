@@ -45,17 +45,17 @@ body { background: #101820; color: #f1f7fb; font-family: system-ui, sans-serif; 
     color: inherit;
     cursor: pointer;
   }
-  .demo .mivo-dv-toolbar {
+  .demo .mihawk-dv-toolbar {
     flex-wrap: nowrap;
     overflow-x: auto;
     align-items: center;
     padding: 4px 8px;
   }
-  .demo .mivo-dv-toolbar-group { flex: 0 0 auto; flex-wrap: nowrap; }
-  .demo .mivo-dv-button { min-height: 44px; white-space: nowrap; }
-  .demo .mivo-dv-icon-button { min-width: 44px; }
-  .demo .mivo-dv-sidebar { display: none; }
-  .demo-series-open .mivo-dv-sidebar {
+  .demo .mihawk-dv-toolbar-group { flex: 0 0 auto; flex-wrap: nowrap; }
+  .demo .mihawk-dv-button { min-height: 44px; white-space: nowrap; }
+  .demo .mihawk-dv-icon-button { min-width: 44px; }
+  .demo .mihawk-dv-sidebar { display: none; }
+  .demo-series-open .mihawk-dv-sidebar {
     display: block;
     position: absolute;
     z-index: 5;
@@ -64,18 +64,18 @@ body { background: #101820; color: #f1f7fb; font-family: system-ui, sans-serif; 
     max-width: none;
     max-height: 60%;
     overflow: auto;
-    border-top: 1px solid var(--mivo-dv-border);
+    border-top: 1px solid var(--mihawk-dv-border);
     border-radius: 12px 12px 0 0;
   }
-  .demo .mivo-dv-series { min-height: 44px; }
-  .demo .mivo-dv-volume-grid {
+  .demo .mihawk-dv-series { min-height: 44px; }
+  .demo .mihawk-dv-volume-grid {
     grid-auto-flow: column;
     grid-auto-columns: 100%;
     grid-template: minmax(0, 1fr) / none;
     overflow: auto hidden;
     scroll-snap-type: x mandatory;
   }
-  .demo .mivo-dv-pane { scroll-snap-align: start; }
-  .demo .mivo-dv-pane-header { min-height: 36px; touch-action: pan-x; }
+  .demo .mihawk-dv-pane { scroll-snap-align: start; }
+  .demo .mihawk-dv-pane-header { min-height: 36px; touch-action: pan-x; }
   .demo-picker { margin: auto auto 0; width: 100%; }
 }
