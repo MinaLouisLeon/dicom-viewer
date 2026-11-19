@@ -23,13 +23,33 @@ function instance(selectionIndex: number, header: Partial<DicomInstanceHeader>):
 const axial: [number, number, number, number, number, number] = [1, 0, 0, 0, 1, 0];
 
 describe('orderInstances', () => {
-  it('orders by position along the slice normal, not by selection or instance number', () => {
+  it('orders axial stacks head first by position, not by selection or instance number', () => {
     const ordered = orderInstances([
-      instance(0, { imagePositionPatient: [0, 0, 5], imageOrientationPatient: axial, instanceNumber: 1 }),
-      instance(1, { imagePositionPatient: [0, 0, -5], imageOrientationPatient: axial, instanceNumber: 3 }),
+      instance(0, { imagePositionPatient: [0, 0, -5], imageOrientationPatient: axial, instanceNumber: 1 }),
+      instance(1, { imagePositionPatient: [0, 0, 5], imageOrientationPatient: axial, instanceNumber: 3 }),
       instance(2, { imagePositionPatient: [0, 0, 0], imageOrientationPatient: axial, instanceNumber: 2 }),
     ]);
     expect(ordered.map((item) => item.selectionIndex)).toEqual([1, 2, 0]);
+  });
+
+  it('runs head first whichever way the axial normal points', () => {
+    // Columns along −y flip the computed normal to −z.
+    const flipped: [number, number, number, number, number, number] = [1, 0, 0, 0, -1, 0];
+    const ordered = orderInstances([
+      instance(0, { imagePositionPatient: [0, 0, 0], imageOrientationPatient: flipped }),
+      instance(1, { imagePositionPatient: [0, 0, 10], imageOrientationPatient: flipped }),
+    ]);
+    expect(ordered.map((item) => item.selectionIndex)).toEqual([1, 0]);
+  });
+
+  it('orders coronal stacks along the slice normal', () => {
+    const coronal: [number, number, number, number, number, number] = [1, 0, 0, 0, 0, -1];
+    const ordered = orderInstances([
+      instance(0, { imagePositionPatient: [0, 20, 0], imageOrientationPatient: coronal }),
+      instance(1, { imagePositionPatient: [0, -20, 0], imageOrientationPatient: coronal }),
+    ]);
+    // Normal is +y (posterior): anterior first.
+    expect(ordered.map((item) => item.selectionIndex)).toEqual([1, 0]);
   });
 
   it('falls back to instance number when geometry is missing or mixed', () => {

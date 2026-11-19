@@ -3,7 +3,7 @@
   "version": "0.5.0",
   "private": true,
   "license": "UNLICENSED",
-  "description": "React DICOM viewer for locally selected files with 2D and 3D (CBCT) viewing, built on Cornerstone3D.",
+  "description": "React DICOM viewer building blocks for locally selected files: a 2D and 3D (CBCT) viewer component, file scanning, presets and a DICOM tag reader, built on Cornerstone3D.",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -24,6 +24,14 @@
     "./vite": {
       "types": "./dist/types/vite/index.d.ts",
       "import": "./dist/vite.js"
+    },
+    "./internal": {
+      "types": "./dist/types/internal.d.ts",
+      "import": "./dist/internal.js"
+    },
+    "./internal/cornerstone": {
+      "types": "./dist/types/internalCornerstone.d.ts",
+      "import": "./dist/internal-cornerstone.js"
     },
     "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json"

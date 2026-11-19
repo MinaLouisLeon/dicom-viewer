@@ -68,6 +68,8 @@ function compareOptional(a: number | undefined, b: number | undefined): number {
  * Orders the instances of one series for stack display.
  * Uses the projection of Image Position (Patient) onto the slice normal when every
  * instance shares one orientation, otherwise Instance Number, otherwise selection order.
+ * Axial stacks (slice normal closest to the head–feet axis) run head first, as scanners
+ * and most viewers present them. Sagittal and coronal stacks run along the normal.
  */
 export function orderInstances(instances: readonly LocalInstance[]): LocalInstance[] {
   const first = instances[0]?.header.imageOrientationPatient;
@@ -82,10 +84,13 @@ export function orderInstances(instances: readonly LocalInstance[]): LocalInstan
     );
 
   const normal = canUseGeometry && first ? sliceNormal(first) : undefined;
+  // LPS: +z is superior, so an axial stack sorts by descending z (head first).
+  const axial = normal !== undefined && Math.abs(normal[2]) >= Math.abs(normal[0]) && Math.abs(normal[2]) >= Math.abs(normal[1]);
+  const direction = axial ? (normal![2] > 0 ? -1 : 1) : 1;
   const distance = (instance: LocalInstance): number | undefined => {
     const position = instance.header.imagePositionPatient;
     if (!normal || !position) return undefined;
-    return position[0] * normal[0] + position[1] * normal[1] + position[2] * normal[2];
+    return direction * (position[0] * normal[0] + position[1] * normal[1] + position[2] * normal[2]);
   };
 
   return [...instances].sort(

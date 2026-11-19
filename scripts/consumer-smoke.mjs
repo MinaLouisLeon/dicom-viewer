@@ -2,9 +2,10 @@
 /**
  * Clean-consumer smoke test.
  *
- * Packs @mihawksolutions/dicom-viewer into a tarball, installs it into a fresh React + Vite
- * project outside this workspace, type-checks and builds that project, and checks
- * the production output for the worker and codec assets the viewer needs.
+ * Builds and packs both packages, @mihawksolutions/dicom-viewer (free building blocks)
+ * and @mihawksolutions/dicom-workstation (the ready app), installs both tarballs into a
+ * fresh React + Vite project outside this workspace, type-checks and builds that
+ * project, and checks the production output for the worker and codec assets.
  *
  *   npm run smoke:consumer            # build + checks
  *   npm run smoke:consumer -- --keep  # keep the temp project and print its path
@@ -19,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkgDir = path.join(root, 'packages', 'dicom-viewer');
+const workstationDir = path.join(root, 'packages', 'dicom-workstation');
 const keep = process.argv.includes('--keep');
 const base = '/dicom-consumer/';
 const isWindows = process.platform === 'win32';
@@ -51,10 +53,22 @@ try {
 
   const files = packInfo.files.map((file) => file.path);
   check('tarball contains dist/index.js, dist/vite.js, dist/styles.css and declarations', ['dist/index.js', 'dist/vite.js', 'dist/styles.css', 'dist/types/index.d.ts', 'dist/types/vite/index.d.ts'].every((f) => files.includes(f)));
-  const expectedFiles = /^(?:package\.json|README\.md|CHANGELOG\.md|dist\/(?:styles\.css|(?:index|vite|chunks\/[\w-]+)\.js|types\/(?:[\w-]+\/)*[\w-]+\.d\.ts))$/;
+  const expectedFiles = /^(?:package\.json|README\.md|CHANGELOG\.md|dist\/(?:styles\.css|(?:index|vite|internal|internal-cornerstone|chunks\/[\w-]+)\.js|types\/(?:[\w-]+\/)*[\w-]+\.d\.ts))$/;
   const unexpectedFiles = files.filter((file) => !expectedFiles.test(file));
   check('tarball contains only expected package and build files', unexpectedFiles.length === 0);
   if (unexpectedFiles.length) console.error(`Unexpected package file count: ${unexpectedFiles.length}`);
+  check('viewer tarball does not contain the workstation app', !files.some((file) => /workstation|DicomWorkstation/i.test(file)));
+
+  // The ready app is a separate package and a separate tarball.
+  run('npm', ['run', 'build'], workstationDir);
+  const wsPackJson = run('npm', ['pack', '--json', '--pack-destination', work], workstationDir);
+  const [wsPackInfo] = JSON.parse(wsPackJson.slice(wsPackJson.indexOf('[')));
+  const wsTarball = path.join(work, wsPackInfo.filename);
+  console.log(`Packed ${wsPackInfo.filename}: ${wsPackInfo.entryCount} files, ${wsPackInfo.size} bytes`);
+  const wsFiles = wsPackInfo.files.map((file) => file.path);
+  check('workstation tarball contains dist/index.js, dist/vite.js, dist/styles.css and declarations', ['dist/index.js', 'dist/vite.js', 'dist/styles.css', 'dist/types/index.d.ts', 'dist/types/vite.d.ts'].every((f) => wsFiles.includes(f)));
+  const wsExpected = /^(?:package\.json|README\.md|CHANGELOG\.md|dist\/(?:styles\.css|(?:index|vite|chunks\/[\w-]+)\.js|types\/[\w-]+\.d\.ts))$/;
+  check('workstation tarball contains only expected package and build files', wsFiles.every((file) => wsExpected.test(file)));
 
   const app = path.join(work, 'app');
   mkdirSync(path.join(app, 'src'), { recursive: true });
@@ -64,7 +78,12 @@ try {
     private: true,
     type: 'module',
     scripts: { build: 'tsc --noEmit && vite build' },
-    dependencies: { '@mihawksolutions/dicom-viewer': `file:${tarball.replaceAll('\\', '/')}`, react: v.react, 'react-dom': v.reactDom },
+    dependencies: {
+      '@mihawksolutions/dicom-viewer': `file:${tarball.replaceAll('\\', '/')}`,
+      '@mihawksolutions/dicom-workstation': `file:${wsTarball.replaceAll('\\', '/')}`,
+      react: v.react,
+      'react-dom': v.reactDom,
+    },
     devDependencies: { vite: v.vite, '@vitejs/plugin-react': v.pluginReact, typescript: v.typescript, '@types/react': v.typesReact, '@types/react-dom': v.typesReactDom, '@types/node': v.typesNode },
   }, null, 2));
   writeFileSync(path.join(app, 'tsconfig.json'), JSON.stringify({
@@ -83,7 +102,9 @@ try {
   writeFileSync(path.join(app, 'index.html'), '<!doctype html><html lang="en"><head><meta charset="UTF-8" /><link rel="icon" href="data:," /><title>consumer</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>\n');
   writeFileSync(path.join(app, 'src', 'main.tsx'), [
     "import '@mihawksolutions/dicom-viewer/styles.css';",
+    "import '@mihawksolutions/dicom-workstation/styles.css';",
     "import { DEFAULT_CODEC_BASE_PATH, DicomViewer, type DicomViewerHandle, type ViewerLayout, type ViewerState } from '@mihawksolutions/dicom-viewer';",
+    "import { DicomWorkstation, type DicomWorkstationHandle, type WorkstationState } from '@mihawksolutions/dicom-workstation';",
     "import { useRef, useState } from 'react';",
     "import { createRoot } from 'react-dom/client';",
     '',
@@ -105,7 +126,21 @@ try {
     '  </>;',
     '}',
     '',
-    "createRoot(document.getElementById('root')!).render(<App />);",
+    '// The full app as one component (open with ?app=workstation).',
+    'function Workstation() {',
+    '  const ref = useRef<DicomWorkstationHandle>(null);',
+    "  const [status, setStatus] = useState('idle');",
+    '  const onState = (state: WorkstationState) => setStatus(`${state.phase} (${state.grid.rows}x${state.grid.columns})`);',
+    '  return <div style={{ height: "100vh" }}>',
+    '    <DicomWorkstation ref={ref} onStateChange={onState} title="Host app"',
+    '      headerEnd={<button onClick={() => ref.current?.clear()}>Host reset</button>}',
+    '      codecBasePath={import.meta.env.BASE_URL + DEFAULT_CODEC_BASE_PATH.slice(1)} />',
+    '    <output aria-label="Workstation state" hidden>{status}</output>',
+    '  </div>;',
+    '}',
+    '',
+    "const useWorkstation = new URLSearchParams(location.search).get('app') === 'workstation';",
+    "createRoot(document.getElementById('root')!).render(useWorkstation ? <Workstation /> : <App />);",
     '',
   ].join('\n'));
 
@@ -127,6 +162,8 @@ try {
   check('build emits viewer CSS', out.some((f) => f.endsWith('.css') && readFileSync(path.join(dist, f), 'utf8').includes('.mihawk-dv')));
   check('Cornerstone is code-split from the entry chunk', out.some((f) => /cornerstoneRenderer.*\.js$/.test(f)));
   check('3D volume code is a separate lazy chunk', out.some((f) => /cornerstoneVolumeRenderer.*\.js$/.test(f)));
+  check('build emits workstation CSS', out.some((f) => f.endsWith('.css') && readFileSync(path.join(dist, f), 'utf8').includes('.mihawk-ws')));
+  check('workstation grid renderer is a separate lazy chunk', out.some((f) => /cornerstoneGridRenderer.*\.js$/.test(f)));
 } finally {
   if (keep) console.log(`\nConsumer files kept at: ${work}\nFrom the app folder, run npx vite preview and open ${base}`);
   else rmSync(work, { recursive: true, force: true });

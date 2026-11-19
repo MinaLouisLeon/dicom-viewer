@@ -106,6 +106,10 @@ export interface FakeVolumeRenderer extends VolumeRenderer {
   rotateBy: Mock<(yaw: number, pitch: number) => void>;
   adjustWindowLevel: Mock<(widthSteps: number, centerSteps: number) => void>;
   resetView: Mock<() => void>;
+  setSlab: Mock<NonNullable<VolumeRenderer['setSlab']>>;
+  setOblique: Mock<(oblique: boolean) => void>;
+  setVolumePreset: Mock<(preset: string) => void>;
+  setCrosshairsVisible: Mock<(visible: boolean) => void>;
   clear: Mock<() => void>;
   destroy: Mock<() => void>;
 }
@@ -164,6 +168,10 @@ export function createFakeVolumeRenderer(options: { autoFinish?: boolean; volume
     rotateBy: vi.fn<(yaw: number, pitch: number) => void>(),
     adjustWindowLevel: vi.fn<(widthSteps: number, centerSteps: number) => void>(),
     resetView: vi.fn<() => void>(),
+    setSlab: vi.fn<NonNullable<VolumeRenderer['setSlab']>>(),
+    setOblique: vi.fn<(oblique: boolean) => void>(),
+    setVolumePreset: vi.fn<(preset: string) => void>(),
+    setCrosshairsVisible: vi.fn<(visible: boolean) => void>(),
     clear: vi.fn<() => void>(() => {
       renderer.status = undefined;
     }),
