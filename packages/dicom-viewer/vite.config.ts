@@ -20,6 +20,8 @@ export default defineConfig({
       entry: {
         index: fileURLToPath(new URL('./src/index.ts', import.meta.url)),
         vite: fileURLToPath(new URL('./src/vite/index.ts', import.meta.url)),
+        internal: fileURLToPath(new URL('./src/internal.ts', import.meta.url)),
+        'internal-cornerstone': fileURLToPath(new URL('./src/internalCornerstone.ts', import.meta.url)),
       },
       formats: ['es'],
       cssFileName: 'styles',

@@ -10,6 +10,7 @@ Version 0.5.0 is the initial release. Earlier 2D and 3D browser checks used synt
 - Only the header attributes needed to group and order images are read. Patient identifiers are not read by the grouping step.
 - Selected files stay in memory for the session. Closing the study, unmounting, or calling `clear()` releases them. After a refresh the user selects the files again.
 - Error objects carry a code only. They never include file names or DICOM values.
+- `readTagMap` and `readImageInfo` read header attributes, including patient identifiers, only when called. `readTagMap` can redact them (`redactPatientData`).
 - Cornerstone stores GPU capability flags (`cornerstone3D.renderingCapabilities`) and a log level (`loglevel`) in `localStorage`. Neither holds clinical data.
 
 ## Install (Vite + React)
@@ -77,6 +78,20 @@ The viewer fills its container. Give the container a height.
 
 If your app uses a non-root `base`, pass `codecBasePath={`${base}mihawk-dicom-viewer/codecs/`}`.
 
+## Building blocks
+
+Besides `<DicomViewer />`, the package exports the pieces the ready app is built from, for hosts that want their own interface:
+
+- **Brightness and contrast:** `DEFAULT_WINDOW_PRESETS`, `presetApplies`, `computeAutoWindow`, `autoWindowOptionsFor`.
+- **DICOM tags:** `readTagMap`, `filterTagNodes`, `countTagNodes`, `tagNodesToJson`, `lookupTag`, `formatTag`, `PATIENT_IDENTIFYING_TAGS`.
+- **Overlay:** `readImageInfo`, `orientationMarkers`, `directionLabel`, `formatPersonName`.
+
+## Ready app
+
+The complete app (tabs, viewport grid, MPR, measurements, tag map, mobile side menu) is a separate package, [`@mihawksolutions/dicom-workstation`](../dicom-workstation/README.md), with its own license. It uses this package as a peer.
+
+`@mihawksolutions/dicom-viewer/internal` and `@mihawksolutions/dicom-viewer/internal/cornerstone` exist for that package and are not a stable API.
+
 ## API
 
 ### `<DicomViewer />` props
@@ -113,6 +128,8 @@ If your app uses a non-root `base`, pass `codecBasePath={`${base}mihawk-dicom-vi
 | Mouse wheel | Next or previous image |
 | Toolbar | Select tool, zoom in or out, reset view |
 | Slice bar (stacks only) | Previous and next buttons, slider, position |
+
+Stacks are ordered by patient geometry. Axial stacks run head first; sagittal and coronal stacks run along the slice normal. Without geometry, Instance Number decides.
 
 When the image is focused (Tab or click), the keyboard works as follows. Arrow keys apply the selected tool. With window/level, Left and Right narrow or widen the window, and Up and Down raise or lower the level, in steps of 5% of the current width. With pan, the arrows move the image. With zoom, Up and Right zoom in. With scroll, the arrows change the image. Page Up and Page Down change the image, Home and End go to the first and last image, `+` and `-` zoom, and `R` resets zoom, pan and window/level. Shift makes each step larger. The image has an accessible description of these keys (`labels.imageViewportHelp`).
 
@@ -179,4 +196,4 @@ npm run check            # typecheck + unit tests + build package and demo
 npm run smoke:consumer   # pack tarball → install in a clean Vite app → build → check assets
 ```
 
-For a browser exercise, run `npm run smoke:consumer -- --keep`, enter the generated `app` folder, and run `npx vite preview`. Open `/dicom-consumer/`. Select a synthetic fixture from `fixtures/synthetic` in the repository and confirm that it displays. Use `codecs` to exercise JPEG 2000 and JPEG-LS in 2D, and select the files in `cbct` or `cbct-multiframe` and click **Host 3D** to exercise linked cross-sections and volume rendering. Use **Host cancel** during a load and **Host reset** after display. Reset should return the viewer to `idle` and remove the study and images. Capture the browser network, console and application storage during the exercise to verify local-data handling on the test device.
+For a browser exercise, run `npm run smoke:consumer -- --keep`, enter the generated `app` folder, and run `npx vite preview`. Open `/dicom-consumer/`. Select a synthetic fixture from `fixtures/synthetic` in the repository and confirm that it displays. Use `codecs` to exercise JPEG 2000 and JPEG-LS in 2D, and select the files in `cbct` or `cbct-multiframe` and click **Host 3D** to exercise linked cross-sections and volume rendering. Use **Host cancel** during a load and **Host reset** after display. Reset should return the viewer to `idle` and remove the study and images. Capture the browser network, console and application storage during the exercise to verify local-data handling on the test device. Open `/dicom-consumer/?app=workstation` to exercise `<DicomWorkstation />` from the workstation tarball the same way.

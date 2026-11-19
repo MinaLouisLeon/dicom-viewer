@@ -40,8 +40,10 @@ export class TranslateCrosshairsTool extends CrosshairsTool {
     };
   }
 
-  override _getRotationHandleNearImagePoint(): null {
-    return null;
+  /** Rotation handles are hit only when `configuration.allowRotation` is true (oblique MPR). */
+  override _getRotationHandleNearImagePoint(...args: Parameters<CrosshairsTool['_getRotationHandleNearImagePoint']>) {
+    if (!this.configuration?.allowRotation) return null;
+    return super._getRotationHandleNearImagePoint(...args);
   }
 }
 

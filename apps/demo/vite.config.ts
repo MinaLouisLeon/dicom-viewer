@@ -1,4 +1,4 @@
-﻿import { mihawkDicomViewer } from '@mihawksolutions/dicom-viewer/vite';
+﻿import { mihawkDicomViewer } from '@mihawksolutions/dicom-workstation/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 

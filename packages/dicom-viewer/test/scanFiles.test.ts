@@ -14,9 +14,9 @@ describe('scanFiles', () => {
     expect(result.studies).toHaveLength(3);
     const ct = result.studies.find((study) => study.summary.description === 'Synthetic CT phantom');
     expect(ct?.series[0]?.summary).toMatchObject({ modality: 'CT', instanceCount: 12, imageCount: 12 });
-    // ct-012.dcm holds the first slice; geometric ordering must put it first.
+    // ct-001.dcm holds the most superior slice; axial stacks run head first.
     const firstSlice = ct?.series[0]?.instances[0];
-    expect(paths[firstSlice?.selectionIndex ?? -1]).toMatch(/ct-012\.dcm$/);
+    expect(paths[firstSlice?.selectionIndex ?? -1]).toMatch(/ct-001\.dcm$/);
     // The damaged slice still has a valid header, so it stays in its series and fails only at decode time.
     expect(ct?.series[1]?.summary).toMatchObject({ seriesNumber: 2, instanceCount: 6, imageCount: 6 });
 

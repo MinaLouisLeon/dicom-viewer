@@ -1,4 +1,4 @@
-import '@mihawksolutions/dicom-viewer/styles.css';
+import '@mihawksolutions/dicom-workstation/styles.css';
 import './demo.css';
 
 import { StrictMode } from 'react';

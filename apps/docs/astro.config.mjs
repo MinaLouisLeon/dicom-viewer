@@ -12,6 +12,7 @@ export default defineConfig({
       sidebar: [
         { label: 'Quickstart', slug: 'quickstart' },
         { label: 'Viewer API', slug: 'api' },
+        { label: 'Workstation (full app)', slug: 'workstation' },
         { label: 'Troubleshooting', slug: 'troubleshooting' },
         { label: 'Open demo (new tab)', link: '/demo/', attrs: { target: '_blank', rel: 'noopener' } },
       ],

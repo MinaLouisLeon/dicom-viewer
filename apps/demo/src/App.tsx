@@ -1,47 +1,64 @@
-﻿import {
+import {
   DEFAULT_CODEC_BASE_PATH,
-  DicomViewer,
-  type DicomViewerHandle,
-  type ViewerState,
-} from '@mihawksolutions/dicom-viewer';
+  DicomWorkstation,
+  type DicomWorkstationHandle,
+} from '@mihawksolutions/dicom-workstation';
 import { useEffect, useRef, useState } from 'react';
+
+const headPaths = Array.from({ length: 48 }, (_, index) => `head/ct-${String(index + 1).padStart(3, '0')}.dcm`);
 
 const samples = [
   {
-    name: 'Dental radiograph',
-    detail: 'Compare enamel, roots, and fine detail with zoom and window/level.',
-    paths: ['dental.dcm'],
+    name: 'Everything',
+    detail: 'All samples at once in a 2 × 2 grid: compare series side by side, link them, and try 3D.',
+    paths: ['dental.dcm', 'dental-jpeg2000.dcm', ...headPaths],
+    grid: { rows: 2, columns: 2 },
   },
   {
     name: 'Head CT',
-    detail: 'Scroll through 48 slices, then switch to 3D for linked cross-sections.',
-    paths: Array.from({ length: 48 }, (_, index) => `head/ct-${String(index + 1).padStart(3, '0')}.dcm`),
+    detail: 'Scroll through 48 slices, try the Brain, Bones and Auto presets, then switch to 3D / MPR.',
+    paths: headPaths,
+    grid: { rows: 1, columns: 1 },
+  },
+  {
+    name: 'Dental radiograph',
+    detail: 'Measure lengths and angles, invert, rotate and use Auto contrast.',
+    paths: ['dental.dcm'],
+    grid: { rows: 1, columns: 1 },
   },
   {
     name: 'JPEG 2000 radiograph',
-    detail: 'View the same dental phantom encoded as lossless JPEG 2000.',
+    detail: 'The same dental phantom encoded as lossless JPEG 2000.',
     paths: ['dental-jpeg2000.dcm'],
+    grid: { rows: 1, columns: 1 },
   },
 ];
 
-const volumePanes = [
-  ['axial', 'Axial'],
-  ['sagittal', 'Sagittal'],
-  ['coronal', 'Coronal'],
-  ['volume', '3D view'],
-] as const;
+type Theme = 'dark' | 'light';
 
 export function App() {
-  const viewer = useRef<DicomViewerHandle>(null);
+  const workstation = useRef<DicomWorkstationHandle>(null);
   const picker = useRef<HTMLDialogElement>(null);
   const request = useRef<AbortController | null>(null);
-  const viewerArea = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState<string>();
   const [error, setError] = useState('');
-  const [state, setState] = useState<ViewerState>();
-  const [seriesOpen, setSeriesOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      return localStorage.getItem('mihawk-demo-theme') === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
 
   useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem('mihawk-demo-theme', theme);
+    } catch {
+      // Storage unavailable.
+    }
+  }, [theme]);
 
   async function loadSample(sample: (typeof samples)[number]) {
     const controller = new AbortController();
@@ -56,7 +73,8 @@ export function App() {
       }));
       if (controller.signal.aborted) return;
       picker.current?.close();
-      void viewer.current?.openFiles(files);
+      workstation.current?.setGrid(sample.grid);
+      void workstation.current?.openFiles(files);
     } catch {
       if (!controller.signal.aborted) {
         controller.abort();
@@ -71,42 +89,30 @@ export function App() {
   }
 
   return (
-    <main className={seriesOpen ? 'demo demo-series-open' : 'demo'}>
-      <header className="demo-header">
-        <h1>DICOM Viewer</h1>
-        <div className="demo-actions">
-          {Boolean(state?.studies.length) && (
-            <button className="demo-series-toggle" type="button" aria-expanded={seriesOpen}
-              onClick={() => setSeriesOpen(!seriesOpen)}>Series</button>
-          )}
-          <button type="button" onClick={() => {
-            setSeriesOpen(false);
-            picker.current?.showModal();
-          }}>Try a sample</button>
-        </div>
-      </header>
-      <div ref={viewerArea} className="demo-viewer" onClick={(event) => {
-        if (event.target instanceof Element && event.target.closest('.mihawk-dv-series')) {
-          setSeriesOpen(false);
+    <main className="demo">
+      <DicomWorkstation
+        ref={workstation}
+        codecBasePath={import.meta.env.BASE_URL + DEFAULT_CODEC_BASE_PATH.slice(1)}
+        maxVolumeBytes={256 * 1024 * 1024}
+        theme={theme}
+        title="Mihawk DICOM Viewer"
+        headerEnd={
+          <div className="demo-header-end">
+            <button type="button" className="demo-button" onClick={() => picker.current?.showModal()}>
+              Samples
+            </button>
+            <button
+              type="button"
+              className="demo-button demo-icon-button"
+              aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}
+              title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? '☀' : '☾'}
+            </button>
+          </div>
         }
-      }}>
-        <DicomViewer
-          ref={viewer}
-          codecBasePath={import.meta.env.BASE_URL + DEFAULT_CODEC_BASE_PATH.slice(1)}
-          maxVolumeBytes={256 * 1024 * 1024}
-          onStateChange={setState}
-        />
-      </div>
-      {state?.phase === 'displayed' && state.layout === '3d' && (
-        <nav className="demo-volume-nav" aria-label="Volume views">
-          {volumePanes.map(([view, label]) => (
-            <button key={view} type="button" onClick={() => {
-              const pane = viewerArea.current?.querySelector<HTMLElement>(`.mihawk-dv-pane[data-view="${view}"]`);
-              pane?.scrollIntoView({ block: 'nearest', inline: 'start' });
-            }}>{label}</button>
-          ))}
-        </nav>
-      )}
+      />
       <dialog ref={picker} className="demo-picker" aria-labelledby="sample-title"
         onClose={() => {
           request.current?.abort();
@@ -116,11 +122,11 @@ export function App() {
         }}>
         <header>
           <h2 id="sample-title">Sample studies</h2>
-          <button type="button" onClick={() => picker.current?.close()}>Close</button>
+          <button type="button" className="demo-button" onClick={() => picker.current?.close()}>Close</button>
         </header>
         <p>These synthetic studies contain no patient data.</p>
         {samples.map((sample) => (
-          <button className="demo-sample" key={sample.name} type="button"
+          <button className="demo-button demo-sample" key={sample.name} type="button"
             disabled={Boolean(loading)} onClick={() => void loadSample(sample)}>
             <strong>{sample.name}</strong>
             <span>{sample.detail}</span>
