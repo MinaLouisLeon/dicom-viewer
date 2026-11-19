@@ -22,6 +22,7 @@ import {
   type SyncOptions,
   type WorkstationTool,
 } from './gridRenderer';
+import { expandArchives, type ArchiveIssue, type ArchiveLimits } from './archive';
 import { MPR_SLOTS, cellCount, clampGrid, type GridLayout, type MprLayout } from './layouts';
 import { DEFAULT_WINDOW_PRESETS, autoWindowOptionsFor, type WindowPreset, type WindowValue } from '@mihawksolutions/dicom-viewer/internal';
 
@@ -56,8 +57,14 @@ export interface CellState {
 
 export interface WorkstationState {
   phase: WorkstationPhase;
-  /** Header scan progress while scanning. */
+  /**
+   * Progress while scanning: bytes of ZIP archives read while `progressStage` is
+   * `archive`, then files whose headers were read (`headers`).
+   */
   progress?: ViewerProgress;
+  progressStage?: 'archive' | 'headers';
+  /** Problems with ZIP archives in the last selection (encrypted, damaged, too large…). */
+  archiveIssues: ArchiveIssue[];
   studies: StudySummary[];
   skipped: SkippedFile[];
   error?: DicomViewerError;
@@ -115,6 +122,8 @@ export interface WorkstationSessionOptions {
   defaultSlab?: VolumeSlab;
   /** 3D look of new 3D cells. @default 'CT-Bone' */
   defaultVolumePreset?: string;
+  /** Open ZIP archives in the selection (with these limits), or `false` to treat them as other files. */
+  archives?: ArchiveLimits | false;
 }
 
 const VOLUME_TOOL_FALLBACK: ViewerTool = 'crosshairs';
@@ -190,6 +199,7 @@ export class WorkstationSession {
       phase: 'idle',
       studies: [],
       skipped: [],
+      archiveIssues: [],
       grid,
       cells,
       activeCellId: cells[0]!.id,
@@ -417,8 +427,10 @@ export class WorkstationSession {
     this.setState({
       phase: 'scanning',
       progress: { processed: 0, total: files.length },
+      progressStage: 'headers',
       studies: [],
       skipped: [],
+      archiveIssues: [],
       error: undefined,
       cells: this.state.cells.map((cell) => ({ ...cell, seriesInstanceUid: undefined, phase: 'empty', error: undefined, presetId: undefined, playing: false, progress: undefined })),
     });
@@ -433,18 +445,37 @@ export class WorkstationSession {
     };
     let result: Awaited<ReturnType<typeof scanFiles>>;
     try {
-      result = await (this.options.scan ?? scanFiles)(files, { signal: controller.signal, onProgress });
+      let selection = files;
+      if (this.options.archives !== false) {
+        // ZIP archives are opened here, in the browser, and replaced by their files.
+        const expanded = await expandArchives(files, {
+          ...(this.options.archives ?? {}),
+          signal: controller.signal,
+          onProgress: (processed, total) => {
+            if (!isCurrent()) return;
+            if (this.state.progressStage !== 'archive') this.setState({ progressStage: 'archive' });
+            onProgress(processed, total);
+          },
+        });
+        if (!isCurrent()) return;
+        selection = expanded.files;
+        if (expanded.archives > 0 || expanded.issues.length) {
+          lastEmit = 0;
+          this.setState({ archiveIssues: expanded.issues, progressStage: 'headers', progress: { processed: 0, total: selection.length } });
+        }
+      }
+      result = await (this.options.scan ?? scanFiles)(selection, { signal: controller.signal, onProgress });
     } catch (error) {
       if (!isCurrent() || isAbortError(error)) return;
       const viewerError = new DicomViewerError(error instanceof DicomViewerError ? error.code : 'FILE_READ_FAILED');
-      this.setState({ phase: 'error', progress: undefined, error: viewerError });
+      this.setState({ phase: 'error', progress: undefined, progressStage: undefined, error: viewerError });
       this.events().onError?.(viewerError);
       return;
     }
     if (!isCurrent()) return;
     this.studies = result.studies;
     const studies = result.studies.map((study) => study.summary);
-    this.setState({ phase: 'ready', progress: undefined, studies, skipped: result.skipped });
+    this.setState({ phase: 'ready', progress: undefined, progressStage: undefined, studies, skipped: result.skipped });
     this.events().onStudiesLoaded?.(studies);
     if (this.options.autoFill !== false) await this.fillEmptyCells();
   }
@@ -630,8 +661,10 @@ export class WorkstationSession {
     this.setState({
       phase: 'idle',
       progress: undefined,
+      progressStage: undefined,
       studies: [],
       skipped: [],
+      archiveIssues: [],
       error: undefined,
       tab: 'viewer',
       cells: this.state.cells.map((cell) => ({ ...cell, seriesInstanceUid: undefined, phase: 'empty', error: undefined, presetId: undefined, playing: false, progress: undefined, mode: '2d' })),

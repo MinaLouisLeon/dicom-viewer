@@ -72,6 +72,8 @@ export interface DicomWorkstationProps {
   volumeRendering?: boolean;
   /** Largest decoded volume a 3D viewport allocates. Read once. */
   maxVolumeBytes?: number;
+  /** Largest total uncompressed size read from ZIP archives. Default 4 GiB. Read once. */
+  maxArchiveBytes?: number;
   /** Viewport grid on mount. Default 1 × 1. Read once. */
   initialGrid?: GridLayout;
   /** Tool on mount. Default window/level. Read once. */
@@ -222,6 +224,7 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
         initialGrid: props.initialGrid,
         initialTool: props.initialTool,
         windowPresets: props.windowPresets,
+        archives: props.features?.archives === false ? false : { maxBytes: props.maxArchiveBytes },
       }),
   );
   const state = useSyncExternalStore(session.subscribe, session.getState, session.getState);
@@ -388,6 +391,10 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
     },
   };
 
+  const progressText =
+    state.progressStage === 'archive'
+      ? labels.openingArchive(state.progress?.processed ?? 0, state.progress?.total ?? 0)
+      : labels.scanning(state.progress?.processed ?? 0, state.progress?.total ?? 0);
   const hasStudies = state.studies.length > 0;
   const compact = size !== 'desktop';
   const tabs: WorkstationTab[] = features.map ? ['viewer', 'map'] : ['viewer'];
@@ -568,9 +575,9 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
                   className="mihawk-ws-progress"
                   max={Math.max(1, state.progress?.total ?? 1)}
                   value={state.progress?.processed ?? 0}
-                  aria-label={labels.scanning(state.progress?.processed ?? 0, state.progress?.total ?? 0)}
+                  aria-label={progressText}
                 />
-                <p>{labels.scanning(state.progress?.processed ?? 0, state.progress?.total ?? 0)}</p>
+                <p>{progressText}</p>
                 <button type="button" className="mihawk-ws-action" onClick={() => session.cancel()}>
                   {labels.cancel}
                 </button>
@@ -580,6 +587,11 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
             {state.phase === 'error' && state.error && (
               <div className="mihawk-ws-dropzone mihawk-ws-error" role="alert">
                 <p>{labels.errors[state.error.code]}</p>
+                {state.archiveIssues.map((issue) => (
+                  <p key={issue.reason} className="mihawk-ws-muted">
+                    {labels.archiveIssues[issue.reason](issue.count)}
+                  </p>
+                ))}
                 {features.openFiles && (
                   <ActionButton icon="file" label={labels.openFiles} onClick={() => fileInputRef.current?.click()} />
                 )}
@@ -600,6 +612,12 @@ export const DicomWorkstation = forwardRef<DicomWorkstationHandle, DicomWorkstat
           )}
           <span>{labels.tools[state.tool]}</span>
           {state.skipped.length > 0 && <span>{labels.skippedFiles(state.skipped.length)}</span>}
+          {state.phase !== 'error' &&
+            state.archiveIssues.map((issue) => (
+              <span key={issue.reason} className="mihawk-ws-status-warning" data-testid="mihawk-ws-archive-issue">
+                {labels.archiveIssues[issue.reason](issue.count)}
+              </span>
+            ))}
           <span className="mihawk-ws-status-spacer" />
           <span className="mihawk-ws-muted">{labels.privacyNote}</span>
         </footer>
