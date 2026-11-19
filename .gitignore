@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tgz
+.vite/
+.astro/
+coverage/
+*.log
+.DS_Store
+# Never commit real patient data. Only synthetic or approved de-identified fixtures under fixtures/.
+*.dcm
+!fixtures/**/*.dcm
