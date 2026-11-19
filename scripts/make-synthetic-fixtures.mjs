@@ -29,7 +29,7 @@ const SOP = {
 
 /** Deterministic UID under the 2.25 (UUID-derived) root. */
 function uid(seed) {
-  const hex = createHash('sha256').update(`mivo-labs-synthetic:${seed}`).digest('hex').slice(0, 32);
+  const hex = createHash('sha256').update(`mihawk-synthetic:${seed}`).digest('hex').slice(0, 32);
   return `2.25.${BigInt(`0x${hex}`).toString(10)}`;
 }
 
@@ -99,7 +99,7 @@ function part10({ sopClassUid, sopInstanceUid, transferSyntaxUid, dataset }) {
     element([0x0002, 0x0003], 'UI', sopInstanceUid),
     element([0x0002, 0x0010], 'UI', transferSyntaxUid),
     element([0x0002, 0x0012], 'UI', uid('implementation')),
-    element([0x0002, 0x0013], 'SH', 'MIVO_SYNTH_1'),
+    element([0x0002, 0x0013], 'SH', 'MIHAWK_SYNTH_1'),
   ]);
   const meta = Buffer.concat([element([0x0002, 0x0000], 'UL', metaBody.length), metaBody]);
   const preamble = Buffer.alloc(128);

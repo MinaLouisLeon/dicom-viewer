@@ -15,7 +15,7 @@ description: Configure the viewer and control it from a host app.
 | `volumeRendering` | Set to `false` to show cross-sections without a rotatable volume pane. |
 | `maxVolumeBytes` | Bound decoded volume size. The package default is 2 GiB. |
 | `labels` | Override visible labels and accessible descriptions. |
-| `className`, `style` | Style the root. The stylesheet exposes `--mivo-dv-*` theme properties. |
+| `className`, `style` | Style the root. The stylesheet exposes `--mihawk-dv-*` theme properties. |
 
 Use `onStateChange` to follow scanning, loading, and display state. Use `onStudiesLoaded` to inspect series and their volume support, `onSeriesDisplayed` to react to a rendered series, and `onError` to handle failures by error code.
 

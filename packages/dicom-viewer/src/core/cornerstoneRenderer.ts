@@ -56,9 +56,9 @@ export async function createCornerstoneStackRenderer(
   await ensureInitialized(config);
 
   instanceCounter += 1;
-  const engineId = `mivo-dv-engine-${instanceCounter}`;
-  const viewportId = `mivo-dv-stack-${instanceCounter}`;
-  const toolGroupId = `mivo-dv-tools-${instanceCounter}`;
+  const engineId = `mihawk-dv-engine-${instanceCounter}`;
+  const viewportId = `mihawk-dv-stack-${instanceCounter}`;
+  const toolGroupId = `mihawk-dv-tools-${instanceCounter}`;
   let engine: RenderingEngine | undefined;
   try {
     engine = new RenderingEngine(engineId);

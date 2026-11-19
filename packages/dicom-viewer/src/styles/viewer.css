@@ -1,25 +1,25 @@
 /*
  * @mihawksolutions/dicom-viewer styles.
- * Every selector is scoped under .mivo-dv; nothing here styles the host page.
- * Theme by overriding the --mivo-dv-* custom properties on .mivo-dv or an ancestor.
+ * Every selector is scoped under .mihawk-dv; nothing here styles the host page.
+ * Theme by overriding the --mihawk-dv-* custom properties on .mihawk-dv or an ancestor.
  */
-.mivo-dv {
-  --mivo-dv-bg: #0f1115;
-  --mivo-dv-surface: #181b21;
-  --mivo-dv-surface-hover: #222630;
-  --mivo-dv-border: #2c313c;
-  --mivo-dv-text: #e7e9ee;
-  --mivo-dv-muted: #9aa1ae;
-  --mivo-dv-accent: #4c8dff;
-  --mivo-dv-accent-text: #ffffff;
-  --mivo-dv-danger: #ff6b6b;
-  --mivo-dv-focus: #8cb4ff;
-  --mivo-dv-radius: 6px;
-  --mivo-dv-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --mivo-dv-sidebar-width: 260px;
-  --mivo-dv-axial: rgb(230, 80, 80);
-  --mivo-dv-sagittal: rgb(230, 200, 60);
-  --mivo-dv-coronal: rgb(80, 200, 110);
+.mihawk-dv {
+  --mihawk-dv-bg: #0f1115;
+  --mihawk-dv-surface: #181b21;
+  --mihawk-dv-surface-hover: #222630;
+  --mihawk-dv-border: #2c313c;
+  --mihawk-dv-text: #e7e9ee;
+  --mihawk-dv-muted: #9aa1ae;
+  --mihawk-dv-accent: #4c8dff;
+  --mihawk-dv-accent-text: #ffffff;
+  --mihawk-dv-danger: #ff6b6b;
+  --mihawk-dv-focus: #8cb4ff;
+  --mihawk-dv-radius: 6px;
+  --mihawk-dv-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mihawk-dv-sidebar-width: 260px;
+  --mihawk-dv-axial: rgb(230, 80, 80);
+  --mihawk-dv-sagittal: rgb(230, 200, 60);
+  --mihawk-dv-coronal: rgb(80, 200, 110);
 
   box-sizing: border-box;
   display: flex;
@@ -27,75 +27,75 @@
   width: 100%;
   height: 100%;
   min-height: 420px;
-  background: var(--mivo-dv-bg);
-  color: var(--mivo-dv-text);
-  font-family: var(--mivo-dv-font);
+  background: var(--mihawk-dv-bg);
+  color: var(--mihawk-dv-text);
+  font-family: var(--mihawk-dv-font);
   font-size: 14px;
   line-height: 1.4;
   overflow: hidden;
 }
 
-.mivo-dv *,
-.mivo-dv *::before,
-.mivo-dv *::after {
+.mihawk-dv *,
+.mihawk-dv *::before,
+.mihawk-dv *::after {
   box-sizing: inherit;
 }
 
-.mivo-dv-toolbar {
+.mihawk-dv-toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px;
-  border-bottom: 1px solid var(--mivo-dv-border);
-  background: var(--mivo-dv-surface);
+  border-bottom: 1px solid var(--mihawk-dv-border);
+  background: var(--mihawk-dv-surface);
 }
 
-.mivo-dv-button {
+.mihawk-dv-button {
   appearance: none;
   min-height: 32px;
   padding: 4px 12px;
-  border: 1px solid var(--mivo-dv-border);
-  border-radius: var(--mivo-dv-radius);
+  border: 1px solid var(--mihawk-dv-border);
+  border-radius: var(--mihawk-dv-radius);
   background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
 }
 
-.mivo-dv-button:hover:not(:disabled) {
-  background: var(--mivo-dv-surface-hover);
+.mihawk-dv-button:hover:not(:disabled) {
+  background: var(--mihawk-dv-surface-hover);
 }
 
-.mivo-dv-button:disabled {
+.mihawk-dv-button:disabled {
   opacity: 0.45;
   cursor: default;
 }
 
-.mivo-dv-button[aria-pressed='true'] {
-  border-color: var(--mivo-dv-accent);
-  background: var(--mivo-dv-accent);
-  color: var(--mivo-dv-accent-text);
+.mihawk-dv-button[aria-pressed='true'] {
+  border-color: var(--mihawk-dv-accent);
+  background: var(--mihawk-dv-accent);
+  color: var(--mihawk-dv-accent-text);
 }
 
-.mivo-dv-icon-button {
+.mihawk-dv-icon-button {
   min-width: 32px;
   padding: 4px 8px;
   font-size: 18px;
   line-height: 1;
 }
 
-.mivo-dv-toolbar-group {
+.mihawk-dv-toolbar-group {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.mivo-dv-toolbar-group + .mivo-dv-toolbar-group {
+.mihawk-dv-toolbar-group + .mihawk-dv-toolbar-group {
   padding-inline-start: 8px;
-  border-inline-start: 1px solid var(--mivo-dv-border);
+  border-inline-start: 1px solid var(--mihawk-dv-border);
 }
 
-.mivo-dv-visually-hidden {
+.mihawk-dv-visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -106,17 +106,17 @@
   border: 0;
 }
 
-.mivo-dv-viewport:focus-visible,
-.mivo-dv-pane-viewport:focus-visible,
-.mivo-dv-slider:focus-visible,
-.mivo-dv-button:focus-visible,
-.mivo-dv-series:focus-visible,
-.mivo-dv-skipped summary:focus-visible {
-  outline: 2px solid var(--mivo-dv-focus);
+.mihawk-dv-viewport:focus-visible,
+.mihawk-dv-pane-viewport:focus-visible,
+.mihawk-dv-slider:focus-visible,
+.mihawk-dv-button:focus-visible,
+.mihawk-dv-series:focus-visible,
+.mihawk-dv-skipped summary:focus-visible {
+  outline: 2px solid var(--mihawk-dv-focus);
   outline-offset: 2px;
 }
 
-.mivo-dv-hidden-input {
+.mihawk-dv-hidden-input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -127,48 +127,48 @@
   pointer-events: none;
 }
 
-.mivo-dv-body {
+.mihawk-dv-body {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.mivo-dv-sidebar {
-  flex: 0 0 var(--mivo-dv-sidebar-width);
+.mihawk-dv-sidebar {
+  flex: 0 0 var(--mihawk-dv-sidebar-width);
   max-width: 45%;
   overflow-y: auto;
   padding: 8px;
-  border-inline-end: 1px solid var(--mivo-dv-border);
-  background: var(--mivo-dv-surface);
+  border-inline-end: 1px solid var(--mihawk-dv-border);
+  background: var(--mihawk-dv-surface);
 }
 
-.mivo-dv-heading {
+.mihawk-dv-heading {
   margin: 4px 4px 8px;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--mivo-dv-muted);
+  color: var(--mihawk-dv-muted);
 }
 
-.mivo-dv-study + .mivo-dv-study {
+.mihawk-dv-study + .mihawk-dv-study {
   margin-top: 12px;
 }
 
-.mivo-dv-study-title {
+.mihawk-dv-study-title {
   display: flex;
   flex-direction: column;
   padding: 0 4px 4px;
   font-weight: 600;
 }
 
-.mivo-dv-series-list {
+.mihawk-dv-series-list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.mivo-dv-series {
+.mihawk-dv-series {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -176,7 +176,7 @@
   margin: 2px 0;
   padding: 6px 8px;
   border: 1px solid transparent;
-  border-radius: var(--mivo-dv-radius);
+  border-radius: var(--mihawk-dv-radius);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -184,22 +184,22 @@
   cursor: pointer;
 }
 
-.mivo-dv-series:hover {
-  background: var(--mivo-dv-surface-hover);
+.mihawk-dv-series:hover {
+  background: var(--mihawk-dv-surface-hover);
 }
 
-.mivo-dv-series[aria-pressed='true'] {
-  border-color: var(--mivo-dv-accent);
-  background: color-mix(in srgb, var(--mivo-dv-accent) 18%, transparent);
+.mihawk-dv-series[aria-pressed='true'] {
+  border-color: var(--mihawk-dv-accent);
+  background: color-mix(in srgb, var(--mihawk-dv-accent) 18%, transparent);
 }
 
-.mivo-dv-muted {
-  color: var(--mivo-dv-muted);
+.mihawk-dv-muted {
+  color: var(--mihawk-dv-muted);
   font-weight: 400;
   font-size: 12px;
 }
 
-.mivo-dv-main {
+.mihawk-dv-main {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -207,49 +207,49 @@
   min-height: 0;
 }
 
-.mivo-dv-slicebar {
+.mihawk-dv-slicebar {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  border-top: 1px solid var(--mivo-dv-border);
-  background: var(--mivo-dv-surface);
+  border-top: 1px solid var(--mihawk-dv-border);
+  background: var(--mihawk-dv-surface);
 }
 
-.mivo-dv-slider {
+.mihawk-dv-slider {
   flex: 1 1 auto;
   min-width: 80px;
-  accent-color: var(--mivo-dv-accent);
+  accent-color: var(--mihawk-dv-accent);
 }
 
-.mivo-dv-slice-position {
+.mihawk-dv-slice-position {
   min-width: 7ch;
   text-align: end;
   font-variant-numeric: tabular-nums;
-  color: var(--mivo-dv-muted);
+  color: var(--mihawk-dv-muted);
 }
 
-.mivo-dv-banner {
+.mihawk-dv-banner {
   position: absolute;
   inset-inline: 8px;
   top: 8px;
   z-index: 1;
   padding: 6px 10px;
-  border: 1px solid var(--mivo-dv-danger);
-  border-radius: var(--mivo-dv-radius);
-  background: color-mix(in srgb, var(--mivo-dv-bg) 88%, transparent);
-  color: var(--mivo-dv-danger);
+  border: 1px solid var(--mihawk-dv-danger);
+  border-radius: var(--mihawk-dv-radius);
+  background: color-mix(in srgb, var(--mihawk-dv-bg) 88%, transparent);
+  color: var(--mihawk-dv-danger);
   pointer-events: none;
 }
 
-.mivo-dv-readout {
+.mihawk-dv-readout {
   display: inline-flex;
   gap: 12px;
   margin-inline-start: auto;
   font-variant-numeric: tabular-nums;
 }
 
-.mivo-dv-stage {
+.mihawk-dv-stage {
   position: relative;
   flex: 1 1 auto;
   min-width: 0;
@@ -257,23 +257,23 @@
   background: #000;
 }
 
-.mivo-dv-stage[data-drag-active] {
-  outline: 2px dashed var(--mivo-dv-accent);
+.mihawk-dv-stage[data-drag-active] {
+  outline: 2px dashed var(--mihawk-dv-accent);
   outline-offset: -6px;
 }
 
-.mivo-dv-viewport {
+.mihawk-dv-viewport {
   position: absolute;
   inset: 0;
   visibility: hidden;
 }
 
-.mivo-dv-viewport[data-visible] {
+.mihawk-dv-viewport[data-visible] {
   visibility: visible;
   touch-action: none;
 }
 
-.mivo-dv-overlay {
+.mihawk-dv-overlay {
   position: absolute;
   inset: 0;
   display: flex;
@@ -283,103 +283,103 @@
   gap: 4px;
   padding: 24px;
   text-align: center;
-  background: color-mix(in srgb, var(--mivo-dv-bg) 70%, transparent);
+  background: color-mix(in srgb, var(--mihawk-dv-bg) 70%, transparent);
 }
 
-.mivo-dv-overlay p {
+.mihawk-dv-overlay p {
   margin: 0;
   max-width: 48ch;
 }
 
-.mivo-dv-dropzone {
-  background: var(--mivo-dv-bg);
+.mihawk-dv-dropzone {
+  background: var(--mihawk-dv-bg);
 }
 
-.mivo-dv-title {
+.mihawk-dv-title {
   font-size: 18px;
   font-weight: 600;
 }
 
-.mivo-dv-error {
-  color: var(--mivo-dv-danger);
-  background: var(--mivo-dv-bg);
+.mihawk-dv-error {
+  color: var(--mihawk-dv-danger);
+  background: var(--mihawk-dv-bg);
 }
 
-.mivo-dv-progress {
+.mihawk-dv-progress {
   width: min(320px, 80%);
-  accent-color: var(--mivo-dv-accent);
+  accent-color: var(--mihawk-dv-accent);
 }
 
-.mivo-dv-status {
+.mihawk-dv-status {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-height: 28px;
   padding: 4px 8px;
-  border-top: 1px solid var(--mivo-dv-border);
-  background: var(--mivo-dv-surface);
-  color: var(--mivo-dv-muted);
+  border-top: 1px solid var(--mihawk-dv-border);
+  background: var(--mihawk-dv-surface);
+  color: var(--mihawk-dv-muted);
   font-size: 12px;
 }
 
-.mivo-dv-skipped summary {
+.mihawk-dv-skipped summary {
   cursor: pointer;
 }
 
-.mivo-dv-skipped ul {
+.mihawk-dv-skipped ul {
   margin: 4px 0 0;
   padding-inline-start: 18px;
 }
 
 @media (max-width: 640px) {
-  .mivo-dv-body {
+  .mihawk-dv-body {
     flex-direction: column;
   }
 
-  .mivo-dv-sidebar {
+  .mihawk-dv-sidebar {
     flex: 0 0 auto;
     max-width: none;
     max-height: 35%;
     border-inline-end: 0;
-    border-bottom: 1px solid var(--mivo-dv-border);
+    border-bottom: 1px solid var(--mihawk-dv-border);
   }
 }
 
 /* The viewports fill their containers, so draw focus rings inside. */
-.mivo-dv-viewport:focus-visible,
-.mivo-dv-pane-viewport:focus-visible {
+.mihawk-dv-viewport:focus-visible,
+.mihawk-dv-pane-viewport:focus-visible {
   outline-offset: -2px;
 }
 
 /* ── 3D layout ─────────────────────────────────────────────────────────────── */
 
-.mivo-dv-badge {
+.mihawk-dv-badge {
   margin-inline-start: 6px;
   padding: 0 5px;
-  border: 1px solid var(--mivo-dv-border);
+  border: 1px solid var(--mihawk-dv-border);
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--mivo-dv-text);
+  color: var(--mihawk-dv-text);
 }
 
-.mivo-dv-volume-grid {
+.mihawk-dv-volume-grid {
   position: absolute;
   inset: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 2px;
-  background: var(--mivo-dv-border);
+  background: var(--mihawk-dv-border);
   visibility: hidden;
 }
 
-.mivo-dv-volume-grid[data-visible] {
+.mihawk-dv-volume-grid[data-visible] {
   visibility: visible;
 }
 
-.mivo-dv-pane {
+.mihawk-dv-pane {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -388,66 +388,66 @@
   background: #000;
 }
 
-.mivo-dv-pane-header {
+.mihawk-dv-pane-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 2px 8px;
   font-size: 12px;
-  color: var(--mivo-dv-muted);
-  background: var(--mivo-dv-surface);
+  color: var(--mihawk-dv-muted);
+  background: var(--mihawk-dv-surface);
 }
 
-.mivo-dv-pane-title {
+.mihawk-dv-pane-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-weight: 600;
-  color: var(--mivo-dv-text);
+  color: var(--mihawk-dv-text);
 }
 
-.mivo-dv-pane-title::before {
+.mihawk-dv-pane-title::before {
   content: '';
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--mivo-dv-pane-color, var(--mivo-dv-muted));
+  background: var(--mihawk-dv-pane-color, var(--mihawk-dv-muted));
 }
 
-.mivo-dv-pane[data-view='axial'] {
-  --mivo-dv-pane-color: var(--mivo-dv-axial);
+.mihawk-dv-pane[data-view='axial'] {
+  --mihawk-dv-pane-color: var(--mihawk-dv-axial);
 }
 
-.mivo-dv-pane[data-view='sagittal'] {
-  --mivo-dv-pane-color: var(--mivo-dv-sagittal);
+.mihawk-dv-pane[data-view='sagittal'] {
+  --mihawk-dv-pane-color: var(--mihawk-dv-sagittal);
 }
 
-.mivo-dv-pane[data-view='coronal'] {
-  --mivo-dv-pane-color: var(--mivo-dv-coronal);
+.mihawk-dv-pane[data-view='coronal'] {
+  --mihawk-dv-pane-color: var(--mihawk-dv-coronal);
 }
 
-.mivo-dv-pane[data-active] .mivo-dv-pane-header {
-  box-shadow: inset 0 -2px 0 var(--mivo-dv-pane-color, var(--mivo-dv-accent));
+.mihawk-dv-pane[data-active] .mihawk-dv-pane-header {
+  box-shadow: inset 0 -2px 0 var(--mihawk-dv-pane-color, var(--mihawk-dv-accent));
 }
 
-.mivo-dv-pane-position {
+.mihawk-dv-pane-position {
   font-variant-numeric: tabular-nums;
 }
 
-.mivo-dv-pane-canvas {
+.mihawk-dv-pane-canvas {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-.mivo-dv-pane-viewport {
+.mihawk-dv-pane-viewport {
   position: absolute;
   inset: 0;
   touch-action: none;
 }
 
-.mivo-dv-pane-notice {
+.mihawk-dv-pane-notice {
   position: absolute;
   inset: 0;
   display: flex;
@@ -455,25 +455,25 @@
   justify-content: center;
   padding: 16px;
   text-align: center;
-  color: var(--mivo-dv-muted);
+  color: var(--mihawk-dv-muted);
 }
 
-.mivo-dv-pane-slider {
+.mihawk-dv-pane-slider {
   /* The shared slider rule grows along the main axis; in this column it must not. */
   flex: 0 0 auto;
   width: 100%;
   margin: 0;
   padding: 4px 8px;
-  background: var(--mivo-dv-surface);
+  background: var(--mihawk-dv-surface);
 }
 
-.mivo-dv-error-action {
+.mihawk-dv-error-action {
   margin-top: 12px;
-  color: var(--mivo-dv-text);
+  color: var(--mihawk-dv-text);
 }
 
 @media (max-width: 640px) {
-  .mivo-dv-volume-grid {
+  .mihawk-dv-volume-grid {
     grid-template-columns: 1fr;
     grid-template-rows: repeat(4, minmax(160px, 1fr));
     overflow-y: auto;
