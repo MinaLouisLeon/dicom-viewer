@@ -55,19 +55,21 @@ The component fills its container, so give the container a height. Files are rea
 - **Image:** invert, rotate, flip, cine with loop, PNG export, full screen.
 - **Linking:** scrolling, zoom/pan, window/level and cross-references between viewports.
 - **Phone and tablet:** a side menu with every option and a thumbnail strip, sized from the component's own width.
+- **ZIP archives:** pick or drop a `.zip` and the DICOM files inside open directly, unpacked in the browser. Streamed and ZIP64 archives are supported. Picking a ZIP with **Open files** also avoids the browser's folder-upload warning on phones.
 
 ## Customise
 
 | Prop | Purpose |
 | --- | --- |
-| `features` | Turn parts off: `map`, `openFiles`, `seriesPanel`, `layouts`, `mpr`, `measurements`, `presets`, `transforms`, `cine`, `sync`, `referenceLines`, `overlay`, `export`, `fullscreen`. |
+| `features` | Turn parts off: `map`, `openFiles`, `seriesPanel`, `layouts`, `mpr`, `measurements`, `presets`, `transforms`, `cine`, `sync`, `referenceLines`, `overlay`, `export`, `fullscreen`, `archives`. |
 | `windowPresets` | Replace the brightness and contrast presets. |
 | `labels` | Translate or reword any text (`defaultWorkstationLabels`). |
 | `theme` | `dark`, `light` or `auto`; override `--mihawk-ws-*` properties for your colours. |
 | `menuMode` | `auto`, `sidemenu` or `toolbar`. |
 | `allowPatientInfo` | `false` never shows patient details. |
 | `title`, `headerStart`, `headerEnd` | Brand the header and add your own controls. |
-| `initialGrid`, `initialTool`, `files` | Starting grid, tool and files. |
+| `initialGrid`, `initialTool`, `files` | Starting grid, tool and files. `files` may include ZIP archives. |
+| `maxArchiveBytes` | Largest total uncompressed size read from ZIP archives (default 4 GiB). Turn ZIP support off with `features={{ archives: false }}`. |
 
 The ref handle offers `openFiles`, `loadSeries`, `setGrid`, `setTool`, `applyPreset`, `setTab`, `exportImage`, `resetView`, `cancel`, `clear` and `getState`. Call `clear()` on logout or patient switch.
 
